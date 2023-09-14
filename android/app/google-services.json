@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "22419589164",
+    "project_id": "accustox",
+    "storage_bucket": "accustox.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:22419589164:android:424b891b99b14d24722989",
+        "android_client_info": {
+          "package_name": "com.accustox.accustox"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "22419589164-7el1mo8m365a2bq3qn5l3c45kbj5i7i9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.accustox.accustox",
+            "certificate_hash": "ed2283998ac97ed53e1346504e64c65cbde1a8e2"
+          }
+        },
+        {
+          "client_id": "22419589164-jlch0q4i9dftq3job8isidd6rm280oun.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9pzSiiFk-Gl-vDxTg1Xg8L82wuVOi20s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "22419589164-jlch0q4i9dftq3job8isidd6rm280oun.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
