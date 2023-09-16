@@ -1,4 +1,7 @@
+import 'package:accustox/categories.dart';
+import 'package:accustox/items.dart';
 import 'package:accustox/profile.dart';
+import 'package:accustox/salespersons.dart';
 import 'package:flutter/material.dart';
 
 class NavDrawer extends StatefulWidget {
@@ -21,6 +24,8 @@ class _NavDrawerState extends State<NavDrawer> {
     const NavigationDrawerDestination(
         icon: Icon(Icons.style_outlined), label: Text('Categories')),
     const NavigationDrawerDestination(
+        icon: Icon(Icons.warehouse_outlined), label: Text('Stock Locations')),
+    const NavigationDrawerDestination(
         icon: Icon(Icons.local_shipping_outlined), label: Text('Suppliers')),
     const NavigationDrawerDestination(
         icon: Icon(Icons.account_circle_outlined), label: Text('Customers')),
@@ -28,7 +33,7 @@ class _NavDrawerState extends State<NavDrawer> {
         icon: Icon(Icons.logout_outlined), label: Text('Sign Out')),
   ];
 
-  List<Widget> views = [const Profile()];
+  List<Widget> views = [const Profile(), const Salespersons(), const Items(), const Categories()];
 
   @override
   void initState() {
@@ -46,9 +51,9 @@ class _NavDrawerState extends State<NavDrawer> {
   Widget build(BuildContext context) {
     return Scaffold(
         body: SafeArea(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           NavigationDrawer(
               selectedIndex: _selectedIndex,
               onDestinationSelected: (int index) {
@@ -63,8 +68,8 @@ class _NavDrawerState extends State<NavDrawer> {
               child: views[_selectedIndex],
             ),
           )
-      ],
-    ),
-        ));
+        ],
+      ),
+    ));
   }
 }

@@ -1,5 +1,5 @@
-import 'package:accustox/color_scheme.dart';
-import 'package:accustox/models.dart';
+import 'color_scheme.dart';
+import 'models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -7,11 +7,13 @@ import 'controllers.dart';
 import 'database.dart';
 import 'login_splash.dart';
 import 'main.dart';
+import 'package:uuid/uuid.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 final DatabaseService _db = DatabaseService();
 final ScaffoldMessengerState _scaffoldMessengerState =
     scaffoldKey.currentState!;
+const Uuid uuid = Uuid();
 
 class Services {
   static final Services _services = Services._privateConstructor();
@@ -174,5 +176,297 @@ class Services {
 
   navigateToSignIn() {
     return navigatorKey.currentState?.pushReplacementNamed('signIn');
+  }
+
+  navigateToEditProfile() {
+    return navigatorKey.currentState?.pushNamed('editProfile');
+  }
+
+  bool hasProfileChanged(
+      UserProfile originalProfile, UserProfileChangeNotifier notifier) {
+    if (notifier.ownerName != originalProfile.ownerName ||
+        notifier.businessName != originalProfile.businessName ||
+        notifier.contactNumber != originalProfile.contactNumber ||
+        notifier.address != originalProfile.address ||
+        notifier.contactNumber != originalProfile.contactNumber ||
+        notifier.email != originalProfile.email ||
+        notifier.uid != originalProfile.uid) {
+      return true;
+    }
+
+    return false;
+  }
+
+  reviewAndSubmitProfileUpdate(
+      {required GlobalKey<FormState> formKey,
+      required UserProfile originalProfile,
+      required UserProfileChangeNotifier notifier}) {
+    bool isValid = formKey.currentState!.validate();
+    bool hasChanged = userController.hasProfileChanged(
+        originalProfile: originalProfile, notifier: notifier);
+
+    if (!isValid) {
+      snackBarController.showSnackBarError('Please provide valid information.');
+    } else if (!hasChanged) {
+      snackBarController
+          .showSnackBar('You have made no changes to your profile...');
+    } else {
+      var userProfile = UserProfile(
+          businessName: notifier.businessName!,
+          ownerName: notifier.ownerName!,
+          email: notifier.email!,
+          contactNumber: notifier.contactNumber!,
+          address: notifier.address!,
+          uid: notifier.uid!);
+
+      snackBarController.showSnackBar('Updating profile...');
+      userController.updateProfile(userProfile: userProfile).whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        navigateToPreviousPage();
+      }).onError((error, stackTrace) => snackBarController.showSnackBarError(
+          'Something went wrong with the process, try again later...'));
+    }
+  }
+
+  addNewSalespersonDialog(BuildContext context, String uid) {
+    final TextEditingController nameController = TextEditingController();
+
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Add Salesperson'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Form(
+                  key: formKey,
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(), labelText: 'Name'),
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.done,
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return "Please enter the salesperson's name";
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () {
+                        var isValid = formKey.currentState!.validate();
+
+                        !isValid
+                            ? null
+                            : dialogController.processAddSalesperson(
+                                uid: uid,
+                                salesperson: Salesperson(
+                                    salespersonName: nameController.text));
+                      },
+                      child: const Text('Confirm'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  removeSalespersonDialog(
+      BuildContext context, String uid, Salesperson salesperson) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Remove Salesperson'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to remove ${salesperson.salespersonName} from your list of salespersons?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () =>
+                          dialogController.processRemoveSalesperson(
+                              uid: uid, salesperson: salesperson),
+                      child: const Text('Confirm'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  processAddSalesperson(String uid, Salesperson salesperson) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(
+        message: 'Adding new salesperson...');
+    userController
+        .addSalesperson(uid: uid, salesperson: salesperson)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('New salesperson successfully added...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  processRemoveSalesperson(String uid, Salesperson salesperson) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(
+        message:
+            'Removing ${salesperson.salespersonName} from list of salespersons...');
+    userController
+        .removeSalesperson(uid: uid, salesperson: salesperson)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('Process successful...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  addNewCategoryDialog(BuildContext context, String uid) {
+    final TextEditingController categoryNameController =
+        TextEditingController();
+
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Add Category'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Form(
+                  key: formKey,
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: categoryNameController,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(), labelText: 'Category'),
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.done,
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return "Please enter category";
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () {
+                        var isValid = formKey.currentState!.validate();
+                        var categoryID = categoryController.getCategoryID();
+                        !isValid
+                            ? null
+                            : dialogController.processAddCategory(
+                                uid: uid,
+                                category: Category(
+                                    categoryName: categoryNameController.text,
+                                    categoryID: categoryID,
+                                    uid: uid));
+                      },
+                      child: const Text('Confirm'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  processAddCategory(String uid, Category category) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(message: 'Adding new category...');
+    categoryController
+        .addCategory(uid: uid, category: category)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('New category successfully added...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  removeCategoryDialog(BuildContext context, String uid, Category category) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Remove Category'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to remove ${category.categoryName} from your list of categories?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () =>
+                          dialogController.processRemoveCategory(uid: uid, category: category),
+                      child: const Text('Confirm'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  processRemoveCategory(String uid, Category category) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(
+        message:
+            'Removing ${category.categoryName} from list of categories...');
+    categoryController
+        .removeCategory(uid: uid, category: category)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('Process successful...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  String getCategoryID() {
+    String id = uuid.v4();
+    return id;
+  }
+
+  String getItemID() {
+    String id = uuid.v4();
+    return id;
   }
 }

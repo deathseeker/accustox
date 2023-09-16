@@ -2,10 +2,12 @@
 
 import 'package:accustox/color_scheme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'custom_color.dart';
 import 'enumerated_values.dart';
+import 'providers.dart';
 import 'text_theme.dart';
 import 'default_values.dart';
 import 'models.dart';
@@ -2492,7 +2494,7 @@ class _SalespersonDropDownMenuState extends State<SalespersonDropDownMenu> {
     for (final Salesperson salesperson in salespersonList) {
       salespersonEntries.add(
         DropdownMenuEntry<Salesperson>(
-            value: salesperson, label: salesperson.salespersonName),
+            value: salesperson, label: salesperson.salespersonName!),
       );
     }
 
@@ -2716,5 +2718,66 @@ class LoadingWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(child: CircularProgressIndicator());
+  }
+}
+
+class ItemCategoryFilterChips extends ConsumerStatefulWidget {
+  const ItemCategoryFilterChips(this.categoryFilters, {super.key});
+
+  final List<CategoryFilter> categoryFilters;
+  @override
+  _ItemCategoryFilterChipsState createState() =>
+      _ItemCategoryFilterChipsState();
+}
+
+class _ItemCategoryFilterChipsState
+    extends ConsumerState<ItemCategoryFilterChips> {
+  final GlobalKey _selectedChipKey = GlobalKey();
+  final GlobalKey _categoryWrapKey = GlobalKey();
+
+  String? _selectedID = 'All';
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    return Wrap(
+      key: _categoryWrapKey,
+      spacing: 8.0,
+      runSpacing: 4.0,
+      children: widget.categoryFilters
+          .map(
+            (filter) => FilterChip(
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          key: filter.categoryID == _selectedID
+              ? _selectedChipKey
+              : null,
+          label: Text(
+            filter.categoryName!,
+          ),
+          selected: filter.categoryID == _selectedID,
+          onSelected: (selected) {
+            setState(() {
+              _selectedID = selected ? filter.categoryID : null;
+            });
+            ref
+                .read(categoryIDProvider.notifier)
+                .setCategoryID(filter.categoryID);
+          },
+        ),
+      )
+          .toList(),
+    );
+
   }
 }

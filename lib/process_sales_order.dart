@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'enumerated_values.dart';
 import 'widget_components.dart';
-
 import 'color_scheme.dart';
 import 'models.dart';
 import 'text_theme.dart';
@@ -65,7 +64,7 @@ class _ProcessSalesOrderState extends State<ProcessSalesOrder> {
                         '09123456789', 'sample@sample.com', 'Address')
                   ],
                   salespersonList: [
-                    Salesperson('Salesperson Name')
+                    Salesperson(salespersonName: 'Salesperson Name')
                   ])
             ],
           ),

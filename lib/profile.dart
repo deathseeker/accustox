@@ -1,4 +1,6 @@
-import 'package:accustox/models.dart';
+import 'package:accustox/controllers.dart';
+
+import 'models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -46,7 +48,8 @@ class ProfileBody extends StatelessWidget {
                         runSpacing: 4.0,
                         children: [
                           InformationWithLabel(
-                              label: 'Business Name', data: userProfile.businessName),
+                              label: 'Business Name',
+                              data: userProfile.businessName),
                           InformationWithLabel(
                               label: 'Owner', data: userProfile.ownerName),
                           InformationWithLabel(
@@ -59,13 +62,15 @@ class ProfileBody extends StatelessWidget {
                         ],
                       ),
                     ),
-                    TextButton(onPressed: () {}, child: const Icon(Icons.edit_outlined))
+                    TextButton(
+                        onPressed: () =>
+                            navigationController.navigateToEditProfile(),
+                        child: const Icon(Icons.edit_outlined))
                   ],
                 ),
               ),
             ),
           ),
-
         ],
       ),
     );

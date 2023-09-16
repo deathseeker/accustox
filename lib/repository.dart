@@ -75,6 +75,43 @@ class UserRepository implements UserInterface {
   Stream<UserProfile> streamUserProfile({required String uid}) {
     return _db.streamUserProfile(uid);
   }
+
+  @override
+  bool hasProfileChanged(
+      {required UserProfile originalProfile,
+      required UserProfileChangeNotifier notifier}) {
+    return _services.hasProfileChanged(originalProfile, notifier);
+  }
+
+  @override
+  reviewAndSubmitProfileUpdate(
+      {required GlobalKey<FormState> formKey,
+      required UserProfile originalProfile,
+      required UserProfileChangeNotifier notifier}) {
+    return _services.reviewAndSubmitProfileUpdate(
+        formKey: formKey, originalProfile: originalProfile, notifier: notifier);
+  }
+
+  @override
+  Future<void> addSalesperson(
+      {required String uid, required Salesperson salesperson}) {
+    return _db.addSalesperson(uid, salesperson);
+  }
+
+  @override
+  Future<void> removeSalesperson({required String uid, required Salesperson salesperson}) {
+    return _db.removeSalesperson(uid, salesperson);
+  }
+
+  @override
+  Stream<SalespersonDocument> streamSalespersonDocument({required String uid}) {
+    return _db.streamSalespersonDocument(uid);
+  }
+
+  @override
+  Stream<List<Salesperson>> streamSalespersonList({required String uid}) {
+    return _db.streamSalespersonList(uid);
+  }
 }
 
 class SnackBarRepository implements SnackBarInterface {
@@ -137,6 +174,182 @@ class NavigationRepository implements NavigationRepositoryInterface {
   @override
   navigateToPreviousPage() {
     return _services.navigateToPreviousPage();
+  }
+
+  @override
+  navigateToEditProfile() {
+    return _services.navigateToEditProfile();
+  }
+}
+
+class DialogRepository implements DialogInterface {
+  final Services _services;
+
+  DialogRepository(this._services);
+
+  @override
+  addNewSalespersonDialog(
+      {required BuildContext context, required String uid}) {
+    return _services.addNewSalespersonDialog(context, uid);
+  }
+
+  @override
+  processAddSalesperson({required String uid, required Salesperson salesperson}) {
+    return _services.processAddSalesperson(uid, salesperson);
+  }
+
+  @override
+  removeSalespersonDialog({required BuildContext context, required String uid, required Salesperson salesperson}) {
+    return _services.removeSalespersonDialog(context, uid, salesperson);
+  }
+
+  @override
+  processRemoveSalesperson({required String uid, required Salesperson salesperson}) {
+    return _services.processRemoveSalesperson(uid, salesperson);
+  }
+
+  @override
+  addCategoryDialog({required BuildContext context, required String uid}) {
+   return _services.addNewCategoryDialog(context, uid);
+  }
+
+  @override
+  processAddCategory({required String uid, required Category category}) {
+   return _services.processAddCategory(uid, category);
+  }
+
+  @override
+  removeCategoryDialog({required BuildContext context, required String uid, required Category category}) {
+    return _services.removeCategoryDialog(context, uid, category);
+  }
+
+  @override
+  processRemoveCategory({required String uid, required Category category}) {
+    return _services.processRemoveCategory(uid, category);
+  }
+}
+
+
+class CategoryRepository implements CategoryInterface {
+  final DatabaseService _db;
+  final Services _services;
+
+  CategoryRepository(this._db, this._services);
+
+  @override
+  Future<void> addCategory({required String uid, required Category category}) {
+    return _db.addCategory(uid, category);
+  }
+
+  @override
+  String getCategoryID() {
+    return _services.getCategoryID();
+  }
+
+  @override
+  Stream<CategoryDocument> streamCategoryDocument({required String uid}) {
+    return _db.streamCategoryDocument(uid);
+  }
+
+  @override
+  Future<List<CategorySelectionData>> getCategoryListWithSelection(
+      {required String uid}) {
+    return _db.getCategoryListWithSelection(uid);
+  }
+
+  @override
+  Future<List<Category>> getCategoryList({required String uid}) {
+    return _db.getCategoryList(uid);
+  }
+
+  @override
+  Future<List<CategoryFilter>> getCategoryFilterList({required String uid}) {
+    return _db.getCategoryFilterList(uid);
+  }
+
+  @override
+  Stream<List<CategoryFilter>> getCategoryFilterListStream({required String uid}) {
+    return _db.getCategoryFilterListStream(uid);
+  }
+
+  @override
+  Stream<List<CategorySelectionData>> streamCategorySelectionDataList(
+      {required String uid}) {
+    return _db.streamCategorySelectionDataList(uid);
+  }
+
+  @override
+  Stream<List<Category>> streamCategoryDataList({required String uid}) {
+    return _db.streamCategoryDataList(uid);
+  }
+
+  @override
+  Future<void> removeItemFromCategory(
+      {required String uid, required String categoryID, required Item item}) {
+    return _db.removeItemFromCategory(uid, categoryID, item);
+  }
+
+  @override
+  Future<void> editCategory(
+      {required String uid,
+        required Category oldCategory,
+        required Category newCategory}) {
+    return _db.editCategory(uid, oldCategory, newCategory);
+  }
+
+  @override
+  Future<void> removeCategory(
+      {required String uid, required Category category}) {
+    return _db.removeCategory(uid, category);
+  }
+
+  @override
+  Future<List<Category?>> getCategoryListForItem({required String uid, required String itemID}) {
+    return _db.getCategoryListForItem(uid, itemID);
+  }
+}
+
+
+class ItemRepository implements ItemInterface {
+  final DatabaseService _db;
+  final Services _services;
+
+  ItemRepository(this._db, this._services);
+
+  @override
+  String getItemID() {
+    return _services.getItemID();
+  }
+
+  @override
+  Future<void> addItem({required String uid, required Item item}) {
+    return _db.addItem(uid, item);
+  }
+
+  @override
+  Stream<List<Item>> getFilteredItemsStreamByCategory(
+      {required String uid, required String categoryID}) {
+    return _db.getFilteredItemsStreamByCategory(uid, categoryID);
+  }
+
+  @override
+  Stream<List<Item>> streamItemDataList({required String uid}) {
+    return _db.streamItemDataList(uid);
+  }
+
+  @override
+  Future<void> removeItem({required String uid, required Item item}) {
+    return _db.removeItem(uid, item);
+  }
+
+  @override
+  Future<void> updateItemAvailability({required String uid, required Item item, required bool isItemAvailable}) {
+    return _db.updateItemAvailability(uid, item, isItemAvailable);
+  }
+
+  @override
+  Future<void> updateItem({required String uid, required Item oldItem, required Item newItem}) {
+    return _db.updateItem(uid, oldItem, newItem);
   }
 
 }

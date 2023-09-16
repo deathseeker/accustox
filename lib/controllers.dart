@@ -85,6 +85,40 @@ class UserController {
   Stream<UserProfile> streamUserProfile({required String uid}) {
     return _userRepository.streamUserProfile(uid: uid);
   }
+
+  bool hasProfileChanged(
+      {required UserProfile originalProfile,
+      required UserProfileChangeNotifier notifier}) {
+    return _userRepository.hasProfileChanged(
+        originalProfile: originalProfile, notifier: notifier);
+  }
+
+  reviewAndSubmitProfileUpdate(
+      {required GlobalKey<FormState> formKey,
+      required UserProfile originalProfile,
+      required UserProfileChangeNotifier notifier}) {
+    return _userRepository.reviewAndSubmitProfileUpdate(
+        formKey: formKey, originalProfile: originalProfile, notifier: notifier);
+  }
+
+  Future<void> addSalesperson(
+      {required String uid, required Salesperson salesperson}) {
+    return _userRepository.addSalesperson(uid: uid, salesperson: salesperson);
+  }
+
+  Future<void> removeSalesperson(
+      {required String uid, required Salesperson salesperson}) {
+    return _userRepository.removeSalesperson(
+        uid: uid, salesperson: salesperson);
+  }
+
+  Stream<SalespersonDocument> streamSalespersonDocument({required String uid}) {
+    return _userRepository.streamSalespersonDocument(uid: uid);
+  }
+
+  Stream<List<Salesperson>> streamSalespersonList({required String uid}) {
+    return _userRepository.streamSalespersonList(uid: uid);
+  }
 }
 
 final SnackBarController snackBarController = SnackBarController();
@@ -117,26 +151,196 @@ class SnackBarController {
 final NavigationController navigationController = NavigationController();
 
 class NavigationController {
-  final NavigationRepository navigationRepository =
+  final NavigationRepository _navigationRepository =
       NavigationRepository(Services());
 
   Future<bool> handleSystemBackButton() {
-    return navigationRepository.handleSystemBackButton();
+    return _navigationRepository.handleSystemBackButton();
   }
 
   navigateToHome() {
-    return navigationRepository.navigateToHome();
+    return _navigationRepository.navigateToHome();
   }
 
   navigateToSignIn() {
-    return navigationRepository.navigateToSignIn();
+    return _navigationRepository.navigateToSignIn();
   }
 
   popUntilHome() {
-    return navigationRepository.popUntilHome();
+    return _navigationRepository.popUntilHome();
   }
 
   navigateToPreviousPage() {
-    return navigationRepository.navigateToPreviousPage();
+    return _navigationRepository.navigateToPreviousPage();
+  }
+
+  navigateToEditProfile() {
+    return _navigationRepository.navigateToEditProfile();
+  }
+}
+
+final DialogController dialogController = DialogController();
+
+class DialogController {
+  final DialogRepository _dialogRepository = DialogRepository(Services());
+
+  addNewSalespersonDialog(
+      {required BuildContext context, required String uid}) {
+    return _dialogRepository.addNewSalespersonDialog(
+        context: context, uid: uid);
+  }
+
+  processAddSalesperson(
+      {required String uid, required Salesperson salesperson}) {
+    return _dialogRepository.processAddSalesperson(
+        uid: uid, salesperson: salesperson);
+  }
+
+  removeSalespersonDialog(
+      {required BuildContext context,
+      required String uid,
+      required Salesperson salesperson}) {
+    return _dialogRepository.removeSalespersonDialog(
+        context: context, uid: uid, salesperson: salesperson);
+  }
+
+  processRemoveSalesperson(
+      {required String uid, required Salesperson salesperson}) {
+    return _dialogRepository.processRemoveSalesperson(
+        uid: uid, salesperson: salesperson);
+  }
+
+  addCategoryDialog({required BuildContext context, required String uid}) {
+    return _dialogRepository.addCategoryDialog(context: context, uid: uid);
+  }
+
+  processAddCategory({required String uid, required Category category}) {
+    return _dialogRepository.processAddCategory(uid: uid, category: category);
+  }
+
+  removeCategoryDialog(
+      {required BuildContext context,
+      required String uid,
+      required Category category}) {
+    return _dialogRepository.removeCategoryDialog(
+        context: context, uid: uid, category: category);
+  }
+
+  processRemoveCategory({required String uid, required Category category}) {
+    return _dialogRepository.processRemoveCategory(
+        uid: uid, category: category);
+  }
+}
+
+final CategoryController categoryController = CategoryController();
+
+class CategoryController {
+  final CategoryRepository _categoryRepository =
+      CategoryRepository(DatabaseService(), Services());
+
+  Future<void> addCategory({required String uid, required Category category}) {
+    return _categoryRepository.addCategory(uid: uid, category: category);
+  }
+
+  String getCategoryID() {
+    return _categoryRepository.getCategoryID();
+  }
+
+  Stream<CategoryDocument> streamCategoryDocument({required String uid}) {
+    return _categoryRepository.streamCategoryDocument(uid: uid);
+  }
+
+  Future<List<CategorySelectionData>> getCategoryListWithSelection(
+      {required String uid}) {
+    return _categoryRepository.getCategoryListWithSelection(uid: uid);
+  }
+
+  Future<List<Category>> getCategoryList({required String uid}) {
+    return _categoryRepository.getCategoryList(uid: uid);
+  }
+
+  Future<List<CategoryFilter>> getCategoryFilterList({required String uid}) {
+    return _categoryRepository.getCategoryFilterList(uid: uid);
+  }
+
+  Stream<List<CategoryFilter>> getCategoryFilterListStream(
+      {required String uid}) {
+    return _categoryRepository.getCategoryFilterListStream(uid: uid);
+  }
+
+  Stream<List<CategorySelectionData>> streamCategorySelectionDataList(
+      {required String uid}) {
+    return _categoryRepository.streamCategorySelectionDataList(uid: uid);
+  }
+
+  Stream<List<Category>> streamCategoryDataList({required String uid}) {
+    return _categoryRepository.streamCategoryDataList(uid: uid);
+  }
+
+  Future<void> removeItemFromCategory(
+      {required String uid, required String categoryID, required Item item}) {
+    return _categoryRepository.removeItemFromCategory(
+        uid: uid, categoryID: categoryID, item: item);
+  }
+
+  Future<void> editCategory(
+      {required String uid,
+      required Category oldCategory,
+      required Category newCategory}) {
+    return _categoryRepository.editCategory(
+        uid: uid, oldCategory: oldCategory, newCategory: newCategory);
+  }
+
+  Future<void> removeCategory(
+      {required String uid, required Category category}) {
+    return _categoryRepository.removeCategory(uid: uid, category: category);
+  }
+
+  Future<List<Category?>> getCategoryListForItem(
+      {required String uid, required String itemID}) {
+    return _categoryRepository.getCategoryListForItem(uid: uid, itemID: itemID);
+  }
+}
+
+final ItemController itemController = ItemController();
+
+class ItemController {
+  final ItemRepository _itemRepository =
+      ItemRepository(DatabaseService(), Services());
+
+  String getItemID() {
+    return _itemRepository.getItemID();
+  }
+
+  Future<void> addItem({required String uid, required Item item}) {
+    return _itemRepository.addItem(uid: uid, item: item);
+  }
+
+  Stream<List<Item>> getFilteredItemsStreamByCategory(
+      {required String uid, required String categoryID}) {
+    return _itemRepository.getFilteredItemsStreamByCategory(
+        uid: uid, categoryID: categoryID);
+  }
+
+  Stream<List<Item>> streamItemDataList({required String uid}) {
+    return _itemRepository.streamItemDataList(uid: uid);
+  }
+
+  Future<void> removeItem({required String uid, required Item item}) {
+    return _itemRepository.removeItem(uid: uid, item: item);
+  }
+
+  Future<void> updateItemAvailability(
+      {required String uid,
+      required Item item,
+      required bool isItemAvailable}) {
+    return _itemRepository.updateItemAvailability(
+        uid: uid, item: item, isItemAvailable: isItemAvailable);
+  }
+
+  Future<void> updateItem(
+      {required String uid, required Item oldItem, required Item newItem}) {
+    return _itemRepository.updateItem(
+        uid: uid, oldItem: oldItem, newItem: newItem);
   }
 }
