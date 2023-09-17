@@ -16,10 +16,6 @@ class Categories extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.0),
-          child: CategoryAddButton(),
-        ),
         CategoriesBody(),
       ],
     );
@@ -130,5 +126,25 @@ class CategoryCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class CategoriesFAB extends ConsumerWidget {
+  const CategoriesFAB({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var user = ref.watch(userProvider);
+
+    return FloatingActionButton.extended(
+      onPressed: user == null
+          ? null
+          : () =>
+          dialogController.addCategoryDialog(
+              context: context, uid: user.uid),
+      label: const Text('Add Category'),
+      icon: const Icon(Icons.new_label_outlined),
+    );
+
   }
 }

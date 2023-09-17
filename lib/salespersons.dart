@@ -16,10 +16,6 @@ class Salespersons extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.0),
-          child: SalespersonAddButton(),
-        ),
         SalespersonBody(),
       ],
     );
@@ -131,5 +127,25 @@ class SalespersonAddButton extends ConsumerWidget {
       icon: const Icon(Icons.person_add_alt_outlined),
       label: const Text('New Salesperson'),
     );
+  }
+}
+
+class SalespersonFAB extends ConsumerWidget {
+  const SalespersonFAB({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var user = ref.watch(userProvider);
+
+    return FloatingActionButton.extended(
+      onPressed: user == null
+          ? null
+          : () =>
+          dialogController.addNewSalespersonDialog(
+              context: context, uid: user.uid),
+      label: const Text('Add Salesperson'),
+      icon: const Icon(Icons.person_add_alt_outlined),
+    );
+
   }
 }

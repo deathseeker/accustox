@@ -32,12 +32,15 @@ class DatabaseService {
         merchantRef.collection('InventoryData').doc('Items');
     final DocumentReference salespersonRef =
         merchantRef.collection('BusinessData').doc('Salespersons');
+    final DocumentReference locationsRef =
+        merchantRef.collection('InventoryData').doc('Locations');
 
     await _firestore.runTransaction((transaction) async {
       transaction.set(merchantRef, userProfile.toFirestore());
       transaction.set(categoriesRef, {'categoryList': []});
       transaction.set(itemsRef, {'itemList': []});
       transaction.set(salespersonRef, {'salespersonList': []});
+      transaction.set(locationsRef, {'stockLocationList': []});
     });
     return _firestore
         .collection('Users')
@@ -444,5 +447,68 @@ class DatabaseService {
         return <Item>[];
       }
     });
+  }
+
+  Future<void> addParentLocation(
+      String uid, StockLocation stockLocation) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('InventoryData')
+        .doc('Locations');
+
+    DocumentReference stockLocationReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Locations')
+        .doc(stockLocation.locationID);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(documentReference, {
+        'stockLocationList':
+            FieldValue.arrayUnion([stockLocation.toFirestore()])
+      });
+
+      transaction.set(stockLocationReference, stockLocation.toFirestore());
+    });
+  }
+
+  Future<void> removeParentLocation(
+      String uid, StockLocation stockLocation) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('InventoryData')
+        .doc('Locations');
+
+    DocumentReference stockLocationReference =
+        _firestore.doc(stockLocation.documentPath!);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(documentReference, {
+        'stockLocationList':
+            FieldValue.arrayRemove([stockLocation.toFirestore()])
+      });
+
+      transaction.delete(stockLocationReference);
+    });
+  }
+
+  Stream<List<StockLocation>> streamParentLocationDataList(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Locations')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => StockLocation.fromFirestore(doc))
+            .toList());
+  }
+
+  Stream<List<StockLocation>> streamSubLocationDataList(String path) {
+    return _firestore.doc(path).collection('SubLocations').snapshots().map(
+        (snapshot) => snapshot.docs
+            .map((doc) => StockLocation.fromFirestore(doc))
+            .toList());
   }
 }

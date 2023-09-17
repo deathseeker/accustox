@@ -230,6 +230,30 @@ class DialogController {
     return _dialogRepository.processRemoveCategory(
         uid: uid, category: category);
   }
+
+  addStockLocationDialog({required BuildContext context, required String uid}) {
+    return _dialogRepository.addStockLocationDialog(context: context, uid: uid);
+  }
+
+  processAddParentLocation(
+      {required String uid, required StockLocation stockLocation}) {
+    return _dialogRepository.processAddParentLocation(
+        uid: uid, stockLocation: stockLocation);
+  }
+
+  removeLocationDialog(
+      {required BuildContext context,
+      required String uid,
+      required StockLocation stockLocation}) {
+    return _dialogRepository.removeLocationDialog(
+        context: context, uid: uid, stockLocation: stockLocation);
+  }
+
+  processRemoveLocation(
+      {required String uid, required StockLocation stockLocation}) {
+    return _dialogRepository.processRemoveLocation(
+        uid: uid, stockLocation: stockLocation);
+  }
 }
 
 final CategoryController categoryController = CategoryController();
@@ -342,5 +366,39 @@ class ItemController {
       {required String uid, required Item oldItem, required Item newItem}) {
     return _itemRepository.updateItem(
         uid: uid, oldItem: oldItem, newItem: newItem);
+  }
+}
+
+final StockLocationController stockLocationController =
+    StockLocationController();
+
+class StockLocationController {
+  final StockLocationRepository _stockLocationRepository =
+      StockLocationRepository(DatabaseService(), Services());
+
+  String getLocationID() {
+    return _stockLocationRepository.getLocationID();
+  }
+
+  Future<void> addParentLocation(
+      {required String uid, required StockLocation stockLocation}) {
+    return _stockLocationRepository.addParentLocation(
+        uid: uid, stockLocation: stockLocation);
+  }
+
+  Stream<List<StockLocation>> streamParentLocationDataList(
+      {required String uid}) {
+    return _stockLocationRepository.streamParentLocationDataList(uid: uid);
+  }
+
+  Future<void> removeParentLocation(
+      {required String uid, required StockLocation stockLocation}) {
+    return _stockLocationRepository.removeParentLocation(
+        uid: uid, stockLocation: stockLocation);
+  }
+
+  Stream<List<StockLocation>> streamSubLocationDataList(
+      {required String path}) {
+    return _stockLocationRepository.streamSubLocationDataList(path: path);
   }
 }

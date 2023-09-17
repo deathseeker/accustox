@@ -124,3 +124,51 @@ enum CustomerType {
 
   const CustomerType(this.label);
 }
+
+
+enum InventoryLocationType {
+  warehouse('Warehouse', 'A large facility or space used for the storage and handling of inventory items'),
+
+  store('Store', 'A retail location where inventory items are displayed and sold to customers'),
+
+  shelf('Shelf', 'A horizontal surface or rack within a store or warehouse used to store and organize items'),
+
+  bin('Bin', 'A specific compartment or container within a shelf or storage system used to store individual items'),
+
+  aisle('Aisle', 'A pathway or corridor within a warehouse or store that provides access to rows of shelving or bins'),
+
+  rack('Rack', 'A vertical structure with multiple shelves or levels used to store items efficiently in a warehouse'),
+
+  pallet('Pallet', 'A portable platform with both a top and bottom deck, used for stacking and transporting goods in a warehouse'),
+
+  bay('Bay', 'A designated section of a rack or shelf where items are stored'),
+
+  storageLocation('Storage Location', 'A specific area or spot within a warehouse or store where items are kept'),
+
+  bulkStorage('Bulk Storage', 'A section of a warehouse reserved for the storage of larger quantities of items, typically not accessible for picking'),
+
+  pickArea('Pick Area', 'A designated location within a warehouse where items are stored for easy access and order picking'),
+
+  receivingArea('Receiving Area', 'The area within a warehouse or store where incoming shipments are processed and items are initially placed in inventory'),
+
+  shippingArea('Shipping Area', 'The area within a warehouse or store where outgoing shipments are prepared and loaded for transport'),
+
+  coldStorage('Cold Storage', 'Temperature-controlled storage areas used for items that require refrigeration or freezing'),
+
+  stagingArea('Staging Area', 'A temporary storage area where items are placed before being moved to their final storage location or prepared for shipping'),
+
+  pickingZone('Picking Zone', 'A designated area within a warehouse where order pickers gather items for customer orders'),
+
+  rackingSystem('Racking System', 'The overall structure of racks and shelves used for storage in a warehouse'),
+
+  backroom('Backroom', 'The storage area within a retail store where excess inventory is kept, away from the sales floor'),
+
+  mezzanine('Mezzanine', 'An intermediate floor within a warehouse used for additional storage space'),
+
+  mobileShelving('Mobile Shelving', 'Shelving units mounted on wheels or tracks to maximize space efficiency in a warehouse');
+
+  final String label;
+  final String description;
+
+  const InventoryLocationType(this.label, this.description);
+}

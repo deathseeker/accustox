@@ -1,7 +1,9 @@
-import 'package:accustox/categories.dart';
-import 'package:accustox/items.dart';
-import 'package:accustox/profile.dart';
-import 'package:accustox/salespersons.dart';
+import 'package:accustox/location_management.dart';
+
+import 'categories.dart';
+import 'items.dart';
+import 'profile.dart';
+import 'salespersons.dart';
 import 'package:flutter/material.dart';
 
 class NavDrawer extends StatefulWidget {
@@ -24,7 +26,8 @@ class _NavDrawerState extends State<NavDrawer> {
     const NavigationDrawerDestination(
         icon: Icon(Icons.style_outlined), label: Text('Categories')),
     const NavigationDrawerDestination(
-        icon: Icon(Icons.warehouse_outlined), label: Text('Stock Locations')),
+        icon: Icon(Icons.warehouse_outlined),
+        label: Text('Location Management')),
     const NavigationDrawerDestination(
         icon: Icon(Icons.local_shipping_outlined), label: Text('Suppliers')),
     const NavigationDrawerDestination(
@@ -33,7 +36,39 @@ class _NavDrawerState extends State<NavDrawer> {
         icon: Icon(Icons.logout_outlined), label: Text('Sign Out')),
   ];
 
-  List<Widget> views = [const Profile(), const Salespersons(), const Items(), const Categories()];
+  List<Widget> views = [
+    const Profile(),
+    const Salespersons(),
+    const Items(),
+    const Categories(),
+    const LocationManagement()
+  ];
+
+  List<Widget> fabs = [
+    const SizedBox(
+      height: 0.0,
+      width: 0.0,
+    ),
+    const SalespersonFAB(),
+    const SizedBox(
+      height: 0.0,
+      width: 0.0,
+    ),
+    const CategoriesFAB(),
+    const LocationManagementFAB(),
+    const SizedBox(
+      height: 0.0,
+      width: 0.0,
+    ),
+    const SizedBox(
+      height: 0.0,
+      width: 0.0,
+    ),
+    const SizedBox(
+      height: 0.0,
+      width: 0.0,
+    ),
+  ];
 
   @override
   void initState() {
@@ -50,26 +85,27 @@ class _NavDrawerState extends State<NavDrawer> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        floatingActionButton: fabs[_selectedIndex],
         body: SafeArea(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          NavigationDrawer(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (int index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
-              children: destinations),
-          Flexible(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: views[_selectedIndex],
-            ),
-          )
-        ],
-      ),
-    ));
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              NavigationDrawer(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (int index) {
+                    setState(() {
+                      _selectedIndex = index;
+                    });
+                  },
+                  children: destinations),
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: views[_selectedIndex],
+                ),
+              )
+            ],
+          ),
+        ));
   }
 }

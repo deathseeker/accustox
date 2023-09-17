@@ -1,6 +1,8 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:accustox/color_scheme.dart';
+import 'package:accustox/controllers.dart';
+import 'package:accustox/sub_location_management.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'colors.dart';
@@ -2717,7 +2719,7 @@ class LoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator());
+    return const Center(child: LinearProgressIndicator());
   }
 }
 
@@ -2725,6 +2727,7 @@ class ItemCategoryFilterChips extends ConsumerStatefulWidget {
   const ItemCategoryFilterChips(this.categoryFilters, {super.key});
 
   final List<CategoryFilter> categoryFilters;
+
   @override
   _ItemCategoryFilterChipsState createState() =>
       _ItemCategoryFilterChipsState();
@@ -2750,7 +2753,6 @@ class _ItemCategoryFilterChipsState
 
   @override
   Widget build(BuildContext context) {
-
     return Wrap(
       key: _categoryWrapKey,
       spacing: 8.0,
@@ -2758,26 +2760,127 @@ class _ItemCategoryFilterChipsState
       children: widget.categoryFilters
           .map(
             (filter) => FilterChip(
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          key: filter.categoryID == _selectedID
-              ? _selectedChipKey
-              : null,
-          label: Text(
-            filter.categoryName!,
-          ),
-          selected: filter.categoryID == _selectedID,
-          onSelected: (selected) {
-            setState(() {
-              _selectedID = selected ? filter.categoryID : null;
-            });
-            ref
-                .read(categoryIDProvider.notifier)
-                .setCategoryID(filter.categoryID);
-          },
-        ),
-      )
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              key: filter.categoryID == _selectedID ? _selectedChipKey : null,
+              label: Text(
+                filter.categoryName!,
+              ),
+              selected: filter.categoryID == _selectedID,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedID = selected ? filter.categoryID : null;
+                });
+                ref
+                    .read(categoryIDProvider.notifier)
+                    .setCategoryID(filter.categoryID);
+              },
+            ),
+          )
           .toList(),
     );
+  }
+}
 
+class LocationTypeDropDownMenu extends ConsumerStatefulWidget {
+  const LocationTypeDropDownMenu({super.key});
+
+  @override
+  _LocationTypeDropDownMenu createState() => _LocationTypeDropDownMenu();
+}
+
+class _LocationTypeDropDownMenu
+    extends ConsumerState<LocationTypeDropDownMenu> {
+  InventoryLocationType? selectedInventoryLocationType;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<DropdownMenuEntry<InventoryLocationType>>
+        inventoryLocationTypeEntries =
+        <DropdownMenuEntry<InventoryLocationType>>[];
+    for (final InventoryLocationType inventoryLocationType
+        in InventoryLocationType.values) {
+      inventoryLocationTypeEntries.add(
+        DropdownMenuEntry<InventoryLocationType>(
+            value: inventoryLocationType, label: inventoryLocationType.label),
+      );
+    }
+
+    return DropdownMenu<InventoryLocationType>(
+      initialSelection: ref.read(inventoryLocationTypeProvider),
+      enableFilter: false,
+      enableSearch: false,
+      label: const Text('Location Type'),
+      dropdownMenuEntries: inventoryLocationTypeEntries,
+      onSelected: (InventoryLocationType? inventoryLocationType) {
+        setState(() {
+          selectedInventoryLocationType = inventoryLocationType;
+        });
+        ref.read(inventoryLocationTypeProvider.notifier).state =
+            inventoryLocationType!;
+      },
+    );
+  }
+}
+
+class StockLocationCard extends StatelessWidget {
+  const StockLocationCard({super.key, required this.stockLocation});
+
+  final StockLocation stockLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  SubLocationManagement(stockLocation: stockLocation))),
+      child: Card(
+        borderOnForeground: true,
+        child: ListTile(
+          title: Text(stockLocation.locationName),
+          subtitle: Text(
+            stockLocation.type,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DeleteLocationButton extends ConsumerWidget {
+  const DeleteLocationButton(this.stockLocation, {super.key});
+
+  final StockLocation stockLocation;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var user = ref.watch(userProvider);
+    var stockLocationList =
+        ref.watch(streamSubLocationListProvider(stockLocation.documentPath!));
+
+    return IconButton(
+        onPressed: () => user == null
+            ? null
+            : stockLocationList.value!.isNotEmpty
+                ? snackBarController.showSnackBarError(
+                    "You cannot delete locations which has sublocations...")
+                : dialogController.removeLocationDialog(
+                    context: context,
+                    uid: user.uid,
+                    stockLocation: stockLocation),
+        icon: const Icon(Icons.remove_circle_outline));
   }
 }

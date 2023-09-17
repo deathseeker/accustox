@@ -541,9 +541,10 @@ class Category {
       String? uid,
       String? imageURL}) {
     return Category(
-        categoryName: categoryName ?? this.categoryName,
-        categoryID: categoryID ?? this.categoryID,
-        uid: uid ?? this.uid,);
+      categoryName: categoryName ?? this.categoryName,
+      categoryID: categoryID ?? this.categoryID,
+      uid: uid ?? this.uid,
+    );
   }
 }
 
@@ -554,10 +555,7 @@ class CategorySelectionData {
   bool? isSelected;
 
   CategorySelectionData(
-      {this.categoryName,
-      this.categoryID,
-      this.uid,
-      this.isSelected});
+      {this.categoryName, this.categoryID, this.uid, this.isSelected});
 
   factory CategorySelectionData.fromMap(Map data) {
     return CategorySelectionData(
@@ -613,7 +611,6 @@ class Item {
   String? itemID;
   String? uid;
   bool? isItemAvailable;
-
 
   Item({
     this.itemName,
@@ -918,5 +915,51 @@ class CategoryIDNotifier extends StateNotifier<String?> {
 
   void setCategoryID(String? id) {
     state = id;
+  }
+}
+
+class StockLocation {
+  String locationID;
+  String locationName;
+  String description;
+  String type;
+  String parentLocationID;
+  String? documentPath; // Firestore document path
+  String locationAddress;
+
+  StockLocation({
+    required this.locationID,
+    required this.locationName,
+    required this.description,
+    required this.type,
+    required this.parentLocationID,
+    required this.locationAddress,
+    this.documentPath,
+  });
+
+  // Factory constructor to create a Location object from Firestore data
+  factory StockLocation.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return StockLocation(
+      locationID: data['locationID'] ?? '',
+      locationName: data['locationName'] ?? '',
+      description: data['description'] ?? '',
+      type: data['type'] ?? '',
+      parentLocationID: data['parentLocationID'] ?? '',
+      locationAddress: data['locationAddress'] ?? '',
+      documentPath: doc.reference.path, // Store the Firestore document path
+    );
+  }
+
+  // Convert Location object to a map for Firestore operations
+  Map<String, dynamic> toFirestore() {
+    return {
+      'locationID': locationID,
+      'locationName': locationName,
+      'description': description,
+      'type': type,
+      'parentLocationID': parentLocationID,
+      'locationAddress': locationAddress,
+    };
   }
 }

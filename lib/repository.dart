@@ -99,7 +99,8 @@ class UserRepository implements UserInterface {
   }
 
   @override
-  Future<void> removeSalesperson({required String uid, required Salesperson salesperson}) {
+  Future<void> removeSalesperson(
+      {required String uid, required Salesperson salesperson}) {
     return _db.removeSalesperson(uid, salesperson);
   }
 
@@ -194,32 +195,40 @@ class DialogRepository implements DialogInterface {
   }
 
   @override
-  processAddSalesperson({required String uid, required Salesperson salesperson}) {
+  processAddSalesperson(
+      {required String uid, required Salesperson salesperson}) {
     return _services.processAddSalesperson(uid, salesperson);
   }
 
   @override
-  removeSalespersonDialog({required BuildContext context, required String uid, required Salesperson salesperson}) {
+  removeSalespersonDialog(
+      {required BuildContext context,
+      required String uid,
+      required Salesperson salesperson}) {
     return _services.removeSalespersonDialog(context, uid, salesperson);
   }
 
   @override
-  processRemoveSalesperson({required String uid, required Salesperson salesperson}) {
+  processRemoveSalesperson(
+      {required String uid, required Salesperson salesperson}) {
     return _services.processRemoveSalesperson(uid, salesperson);
   }
 
   @override
   addCategoryDialog({required BuildContext context, required String uid}) {
-   return _services.addNewCategoryDialog(context, uid);
+    return _services.addNewCategoryDialog(context, uid);
   }
 
   @override
   processAddCategory({required String uid, required Category category}) {
-   return _services.processAddCategory(uid, category);
+    return _services.processAddCategory(uid, category);
   }
 
   @override
-  removeCategoryDialog({required BuildContext context, required String uid, required Category category}) {
+  removeCategoryDialog(
+      {required BuildContext context,
+      required String uid,
+      required Category category}) {
     return _services.removeCategoryDialog(context, uid, category);
   }
 
@@ -227,8 +236,27 @@ class DialogRepository implements DialogInterface {
   processRemoveCategory({required String uid, required Category category}) {
     return _services.processRemoveCategory(uid, category);
   }
-}
 
+  @override
+  addStockLocationDialog({required BuildContext context, required String uid}) {
+    return _services.addStockLocationDialog(context, uid);
+  }
+
+  @override
+  processAddParentLocation({required String uid, required StockLocation stockLocation}) {
+    return _services.processAddParentLocation(uid, stockLocation);
+  }
+
+  @override
+  removeLocationDialog({required BuildContext context, required String uid, required StockLocation stockLocation}) {
+    return _services.removeLocationDialog(context, uid, stockLocation);
+  }
+
+  @override
+  processRemoveLocation({required String uid, required StockLocation stockLocation}) {
+    return _services.processRemoveLocation(uid, stockLocation);
+  }
+}
 
 class CategoryRepository implements CategoryInterface {
   final DatabaseService _db;
@@ -268,7 +296,8 @@ class CategoryRepository implements CategoryInterface {
   }
 
   @override
-  Stream<List<CategoryFilter>> getCategoryFilterListStream({required String uid}) {
+  Stream<List<CategoryFilter>> getCategoryFilterListStream(
+      {required String uid}) {
     return _db.getCategoryFilterListStream(uid);
   }
 
@@ -292,8 +321,8 @@ class CategoryRepository implements CategoryInterface {
   @override
   Future<void> editCategory(
       {required String uid,
-        required Category oldCategory,
-        required Category newCategory}) {
+      required Category oldCategory,
+      required Category newCategory}) {
     return _db.editCategory(uid, oldCategory, newCategory);
   }
 
@@ -304,11 +333,11 @@ class CategoryRepository implements CategoryInterface {
   }
 
   @override
-  Future<List<Category?>> getCategoryListForItem({required String uid, required String itemID}) {
+  Future<List<Category?>> getCategoryListForItem(
+      {required String uid, required String itemID}) {
     return _db.getCategoryListForItem(uid, itemID);
   }
 }
-
 
 class ItemRepository implements ItemInterface {
   final DatabaseService _db;
@@ -343,13 +372,49 @@ class ItemRepository implements ItemInterface {
   }
 
   @override
-  Future<void> updateItemAvailability({required String uid, required Item item, required bool isItemAvailable}) {
+  Future<void> updateItemAvailability(
+      {required String uid,
+      required Item item,
+      required bool isItemAvailable}) {
     return _db.updateItemAvailability(uid, item, isItemAvailable);
   }
 
   @override
-  Future<void> updateItem({required String uid, required Item oldItem, required Item newItem}) {
+  Future<void> updateItem(
+      {required String uid, required Item oldItem, required Item newItem}) {
     return _db.updateItem(uid, oldItem, newItem);
+  }
+}
+
+class StockLocationRepository implements StockLocationInterface {
+  final DatabaseService _db;
+  final Services _services;
+
+  StockLocationRepository(this._db, this._services);
+
+  @override
+  String getLocationID() {
+    return _services.getLocationID();
+  }
+
+  @override
+  Future<void> addParentLocation({required String uid, required StockLocation stockLocation}) {
+    return _db.addParentLocation(uid, stockLocation);
+  }
+
+  @override
+  Stream<List<StockLocation>> streamParentLocationDataList({required String uid}) {
+    return _db.streamParentLocationDataList(uid);
+  }
+
+  @override
+  Future<void> removeParentLocation({required String uid, required StockLocation stockLocation}) {
+    return _db.removeParentLocation(uid, stockLocation);
+  }
+
+  @override
+  Stream<List<StockLocation>> streamSubLocationDataList({required String path}) {
+    return _db.streamSubLocationDataList(path);
   }
 
 }

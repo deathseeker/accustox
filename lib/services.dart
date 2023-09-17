@@ -1,3 +1,7 @@
+import 'enumerated_values.dart';
+import 'providers.dart';
+import 'widget_components.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'color_scheme.dart';
 import 'models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -436,8 +440,8 @@ class Services {
                           navigationController.navigateToPreviousPage(),
                       child: const Text('Cancel')),
                   FilledButton(
-                      onPressed: () =>
-                          dialogController.processRemoveCategory(uid: uid, category: category),
+                      onPressed: () => dialogController.processRemoveCategory(
+                          uid: uid, category: category),
                       child: const Text('Confirm'))
                 ],
               )
@@ -468,5 +472,163 @@ class Services {
   String getItemID() {
     String id = uuid.v4();
     return id;
+  }
+
+  String getLocationID() {
+    String id = uuid.v4();
+    return id;
+  }
+
+  addStockLocationDialog(BuildContext context, String uid) {
+    final TextEditingController locationNameController =
+        TextEditingController();
+    final TextEditingController descriptionController = TextEditingController();
+    final TextEditingController typeController = TextEditingController();
+
+    final formKey = GlobalKey<FormState>();
+
+    InventoryLocationType? handleLocationType(
+        InventoryLocationType? selectedType) {
+      return selectedType;
+    }
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Add Location'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const LocationTypeDropDownMenu(),
+                      const Padding(padding: EdgeInsets.only(top: 8.0)),
+                      TextFormField(
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: locationNameController,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Stock Location Name'),
+                        keyboardType: TextInputType.name,
+                        textInputAction: TextInputAction.done,
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return "Please enter stock location's name";
+                          }
+                          return null;
+                        },
+                      ),
+                      const Padding(padding: EdgeInsets.only(top: 8.0)),
+                      TextFormField(
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: descriptionController,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Location Description (Optional)'),
+                        keyboardType: TextInputType.name,
+                        textInputAction: TextInputAction.done,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  Consumer(builder: (context, ref, child) {
+                    var type = ref.watch(inventoryLocationTypeProvider);
+                    return FilledButton(
+                        onPressed: () {
+                          var isValid = formKey.currentState!.validate();
+                          var locationID =
+                              stockLocationController.getLocationID();
+
+                          !isValid
+                              ? null
+                              : dialogController.processAddParentLocation(
+                                  uid: uid,
+                                  stockLocation: StockLocation(
+                                      locationID: locationID,
+                                      locationName: locationNameController.text,
+                                      description: descriptionController.text,
+                                      type: type.label,
+                                      parentLocationID: 'Parent',
+                                      locationAddress:
+                                          locationNameController.text));
+                        },
+                        child: const Text('Confirm'));
+                  })
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  processAddParentLocation(String uid, StockLocation stockLocation) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(message: 'Adding new location...');
+    stockLocationController
+        .addParentLocation(uid: uid, stockLocation: stockLocation)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('New location successfully added...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  removeLocationDialog(
+      BuildContext context, String uid, StockLocation stockLocation) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Remove Location'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to remove ${stockLocation.locationName} from your list of locations?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () => dialogController.processRemoveLocation(
+                          uid: uid, stockLocation: stockLocation),
+                      child: const Text('Confirm'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  processRemoveLocation(String uid, StockLocation stockLocation) {
+    navigationController.navigateToPreviousPage();
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(
+        message:
+            'Removing ${stockLocation.locationName} from list of locations...');
+    stockLocationController
+        .removeParentLocation(uid: uid, stockLocation: stockLocation)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('Process successful...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
   }
 }

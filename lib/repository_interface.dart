@@ -100,6 +100,19 @@ abstract class DialogInterface {
       required Category category});
 
   processRemoveCategory({required String uid, required Category category});
+
+  addStockLocationDialog({required BuildContext context, required String uid});
+
+  processAddParentLocation(
+      {required String uid, required StockLocation stockLocation});
+
+  removeLocationDialog(
+      {required BuildContext context,
+      required String uid,
+      required StockLocation stockLocation});
+
+  processRemoveLocation(
+      {required String uid, required StockLocation stockLocation});
 }
 
 abstract class CategoryInterface {
@@ -156,4 +169,19 @@ abstract class ItemInterface {
 
   Future<void> updateItem(
       {required String uid, required Item oldItem, required Item newItem});
+}
+
+abstract class StockLocationInterface {
+  String getLocationID();
+
+  Future<void> addParentLocation(
+      {required String uid, required StockLocation stockLocation});
+
+  Stream<List<StockLocation>> streamParentLocationDataList(
+      {required String uid});
+
+  Future<void> removeParentLocation(
+      {required String uid, required StockLocation stockLocation});
+
+  Stream<List<StockLocation>> streamSubLocationDataList({required String path});
 }

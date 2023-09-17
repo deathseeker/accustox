@@ -1,3 +1,4 @@
+import 'package:accustox/enumerated_values.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'controllers.dart';
@@ -61,8 +62,24 @@ final streamItemsListByCategoryFilterProvider =
 });
 
 StreamProvider<List<Category>> streamCategoryListProvider =
-StreamProvider((ref) {
+    StreamProvider((ref) {
   final user = ref.watch(_userProvider);
   String uid = user.asData!.value!.uid;
   return categoryController.streamCategoryDataList(uid: uid);
+});
+
+final inventoryLocationTypeProvider = StateProvider<InventoryLocationType>(
+  (ref) => InventoryLocationType.warehouse,
+);
+
+StreamProvider<List<StockLocation>> streamLocationListProvider =
+    StreamProvider((ref) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return stockLocationController.streamParentLocationDataList(uid: uid);
+});
+
+final streamSubLocationListProvider =
+    StreamProvider.autoDispose.family<List<StockLocation>, String>((ref, path) {
+  return stockLocationController.streamSubLocationDataList(path: path);
 });
