@@ -1,4 +1,6 @@
+import 'package:accustox/customer_accounts.dart';
 import 'package:accustox/location_management.dart';
+import 'package:accustox/suppliers.dart';
 
 import 'categories.dart';
 import 'items.dart';
@@ -41,7 +43,9 @@ class _NavDrawerState extends State<NavDrawer> {
     const Salespersons(),
     const Items(),
     const Categories(),
-    const LocationManagement()
+    const LocationManagement(),
+    const Suppliers(),
+    const CustomerAccounts()
   ];
 
   List<Widget> fabs = [
@@ -50,20 +54,11 @@ class _NavDrawerState extends State<NavDrawer> {
       width: 0.0,
     ),
     const SalespersonFAB(),
-    const SizedBox(
-      height: 0.0,
-      width: 0.0,
-    ),
+    const ItemsFAB(),
     const CategoriesFAB(),
     const LocationManagementFAB(),
-    const SizedBox(
-      height: 0.0,
-      width: 0.0,
-    ),
-    const SizedBox(
-      height: 0.0,
-      width: 0.0,
-    ),
+    const SuppliersFAB(),
+    const CustomerAccountsFAB(),
     const SizedBox(
       height: 0.0,
       width: 0.0,

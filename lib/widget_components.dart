@@ -678,6 +678,34 @@ class InformationWithLabel extends StatelessWidget {
   }
 }
 
+class InformationWithLabelLarge extends StatelessWidget {
+  const InformationWithLabelLarge(
+      {super.key, required this.label, required this.data});
+
+  final String label;
+  final String data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: customTextStyle.labelLarge
+              .copyWith(color: lightColorScheme.onSurfaceVariant),
+        ),
+        Text(
+          data,
+          style: customTextStyle.bodyLarge
+              .copyWith(color: lightColorScheme.onSurface),
+        ),
+      ],
+    );
+  }
+}
+
 class ItemDetails extends StatelessWidget {
   const ItemDetails(
       {super.key,
@@ -2514,7 +2542,7 @@ class _SalespersonDropDownMenuState extends State<SalespersonDropDownMenu> {
   }
 }
 
-class CustomerTypeDropDownMenu extends StatefulWidget {
+class CustomerTypeDropDownMenu extends ConsumerStatefulWidget {
   const CustomerTypeDropDownMenu({super.key});
 
   @override
@@ -2522,7 +2550,8 @@ class CustomerTypeDropDownMenu extends StatefulWidget {
       _CustomerTypeDropDownMenuState();
 }
 
-class _CustomerTypeDropDownMenuState extends State<CustomerTypeDropDownMenu> {
+class _CustomerTypeDropDownMenuState
+    extends ConsumerState<CustomerTypeDropDownMenu> {
   CustomerType? selectedCustomerType;
 
   @override
@@ -2547,6 +2576,7 @@ class _CustomerTypeDropDownMenuState extends State<CustomerTypeDropDownMenu> {
     }
 
     return DropdownMenu<CustomerType>(
+      initialSelection: ref.watch(customerTypeProvider),
       enableFilter: false,
       enableSearch: false,
       label: const Text('CustomerType'),
@@ -2555,6 +2585,7 @@ class _CustomerTypeDropDownMenuState extends State<CustomerTypeDropDownMenu> {
         setState(() {
           selectedCustomerType = customerType;
         });
+        ref.read(customerTypeProvider.notifier).state = customerType!;
       },
     );
   }
@@ -2719,7 +2750,7 @@ class LoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: LinearProgressIndicator());
+    return const Center(child: CircularProgressIndicator());
   }
 }
 
@@ -2882,5 +2913,45 @@ class DeleteLocationButton extends ConsumerWidget {
                     uid: user.uid,
                     stockLocation: stockLocation),
         icon: const Icon(Icons.remove_circle_outline));
+  }
+}
+
+class SupplierMoreMenuButton extends ConsumerWidget {
+  const SupplierMoreMenuButton({super.key, required this.supplier});
+
+  final Supplier supplier;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var user = ref.watch(userProvider);
+
+    return user == null
+        ? const SizedBox(
+            height: 0.0,
+            width: 0.0,
+          )
+        : MenuAnchor(
+            menuChildren: [
+              MenuItemButton(
+                  onPressed: () => navigationController.navigateToEditSupplier(
+                      supplier: supplier),
+                  child: const Text('Edit')),
+              MenuItemButton(
+                  onPressed: () => dialogController.removeSupplierDialog(
+                      context: context, uid: user.uid, supplier: supplier),
+                  child: const Text('Delete'))
+            ],
+            builder: (context, controller, child) {
+              return IconButton(
+                  onPressed: () {
+                    if (controller.isOpen) {
+                      controller.close();
+                    } else {
+                      controller.open();
+                    }
+                  },
+                  icon: const Icon(Icons.more_horiz_outlined));
+            },
+          );
   }
 }

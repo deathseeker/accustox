@@ -16,7 +16,7 @@ class Categories extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CategoriesBody(),
+        Expanded(child: CategoriesBody()),
       ],
     );
   }

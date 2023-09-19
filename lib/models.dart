@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:io';
 import 'package:accustox/providers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -251,10 +251,60 @@ class Supplier {
   final String contactPerson;
   final String email;
   final String address;
-  final String paymentTerms;
+  final String supplierID;
 
-  Supplier(this.supplierName, this.contactNumber, this.contactPerson,
-      this.email, this.address, this.paymentTerms);
+  Supplier({
+    required this.supplierName,
+    required this.contactNumber,
+    required this.contactPerson,
+    required this.email,
+    required this.address,
+    required this.supplierID,
+  });
+
+  factory Supplier.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Supplier(
+      supplierName: data['supplierName'] ?? '',
+      contactNumber: data['contactNumber'] ?? '',
+      contactPerson: data['contactPerson'] ?? '',
+      email: data['email'] ?? '',
+      address: data['address'] ?? '',
+      supplierID: data['supplierID'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'supplierName': supplierName,
+      'contactNumber': contactNumber,
+      'contactPerson': contactPerson,
+      'email': email,
+      'address': address,
+    };
+  }
+
+  factory Supplier.fromMap(Map? data) {
+    return Supplier(
+      supplierName: data?['supplierName'] ?? '',
+      contactNumber: data?['contactNumber'] ?? '',
+      contactPerson: data?['contactPerson'] ?? '',
+      email: data?['email'] ?? '',
+      address: data?['address'] ?? '',
+      supplierID: data?['supplierID'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'supplierName': supplierName,
+      'contactNumber': contactNumber,
+      'contactPerson': contactPerson,
+      'email': email,
+      'address': address,
+      'supplierID': supplierID
+    };
+  }
 }
 
 class SupplierCardData {
@@ -285,6 +335,7 @@ class OrderSummaryListTileData {
 }
 
 class Customer {
+  final String customerID;
   final String customerName;
   final String customerType;
   final String contactPerson;
@@ -292,8 +343,65 @@ class Customer {
   final String email;
   final String address;
 
-  Customer(this.customerName, this.customerType, this.contactPerson,
-      this.contactNumber, this.email, this.address);
+  Customer({
+    required this.customerID,
+    required this.customerName,
+    required this.customerType,
+    required this.contactPerson,
+    required this.contactNumber,
+    required this.email,
+    required this.address,
+  });
+
+  factory Customer.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+    return Customer(
+      customerID: data['customerID'] ?? '',
+      customerName: data['customerName'] ?? '',
+      customerType: data['customerType'] ?? '',
+      contactPerson: data['contactPerson'] ?? '',
+      contactNumber: data['contactNumber'] ?? '',
+      email: data['email'] ?? '',
+      address: data['address'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'customerID': customerID,
+      'customerName': customerName,
+      'customerType': customerType,
+      'contactPerson': contactPerson,
+      'contactNumber': contactNumber,
+      'email': email,
+      'address': address,
+    };
+  }
+
+  factory Customer.fromMap(Map? map) {
+    return Customer(
+      customerID: map?['customerID'] ?? '',
+      customerName: map?['customerName'] ?? '',
+      customerType: map?['customerType'] ?? '',
+      contactPerson: map?['contactPerson'] ?? '',
+      contactNumber: map?['contactNumber'] ?? '',
+      email: map?['email'] ?? '',
+      address: map?['address'] ?? '',
+    );
+  }
+
+  // Convert a Customer object to a map
+  Map<String, dynamic> toMap() {
+    return {
+      'customerID': customerID,
+      'customerName': customerName,
+      'customerType': customerType,
+      'contactPerson': contactPerson,
+      'contactNumber': contactNumber,
+      'email': email,
+      'address': address,
+    };
+  }
 }
 
 class Salesperson {
@@ -487,6 +595,38 @@ class CategoryDocument {
   }
 }
 
+class SupplierDocument {
+  List<Map>? supplierList;
+
+  SupplierDocument({this.supplierList});
+
+  factory SupplierDocument.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+
+    return SupplierDocument(
+      supplierList: data['supplierList'] is Iterable
+          ? List.from(data['supplierList'])
+          : [],
+    );
+  }
+}
+
+class CustomerDocument {
+  List<Map>? customerList;
+
+  CustomerDocument({this.customerList});
+
+  factory CustomerDocument.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+
+    return CustomerDocument(
+      customerList: data['customerList'] is Iterable
+          ? List.from(data['customerList'])
+          : [],
+    );
+  }
+}
+
 class Category {
   final String? categoryName;
   final String? uid;
@@ -593,13 +733,12 @@ class ItemDocument {
   }
 }
 
-class Item {
+class Item with ChangeNotifier {
   String? itemName;
   String? manufacturer;
   String? unit;
   String? sku;
   String? ean;
-  String? productID;
   String? brand;
   String? country;
   String? productType;
@@ -611,51 +750,62 @@ class Item {
   String? itemID;
   String? uid;
   bool? isItemAvailable;
+  String? size;
+  String? color;
+  String? length;
+  String? width;
+  String? height;
 
-  Item({
-    this.itemName,
-    this.manufacturer,
-    this.unit,
-    this.sku,
-    this.ean,
-    this.productID,
-    this.brand,
-    this.country,
-    this.productType,
-    this.unitOfMeasurement,
-    this.manufacturerPartNumber,
-    this.itemDescription,
-    this.imageURL,
-    this.categoryTags,
-    this.itemID,
-    this.uid,
-    this.isItemAvailable,
-  });
+  Item(
+      {this.itemName,
+      this.manufacturer,
+      this.unit,
+      this.sku,
+      this.ean,
+      this.brand,
+      this.country,
+      this.productType,
+      this.unitOfMeasurement,
+      this.manufacturerPartNumber,
+      this.itemDescription,
+      this.imageURL,
+      this.categoryTags,
+      this.itemID,
+      this.uid,
+      this.isItemAvailable,
+      this.size,
+      this.color,
+      this.length,
+      this.width,
+      this.height});
 
   factory Item.fromFirestore(DocumentSnapshot<Map<String, dynamic>> snapshot) {
     final data = snapshot.data();
 
     var item = Item(
-      itemName: data?['itemName'],
-      manufacturer: data?['manufacturer'],
-      unit: data?['unit'],
-      sku: data?['sku'],
-      ean: data?['ean'],
-      productID: data?['productID'],
-      brand: data?['brand'],
-      country: data?['country'],
-      productType: data?['productType'],
-      unitOfMeasurement: data?['unitOfMeasurement'],
-      manufacturerPartNumber: data?['manufacturerPartNumber'],
-      itemDescription: data?['itemDescription'],
-      imageURL: data?['imageURL'],
-      categoryTags: data?['categoryTags'] is Iterable
-          ? List<Map>.from(data?['categoryTags'] ?? [])
-          : [],
-      itemID: data?['itemID'],
-      uid: data?['uid'],
-      isItemAvailable: data?['isItemAvailable'],
-    );
+        itemName: data?['itemName'],
+        manufacturer: data?['manufacturer'],
+        unit: data?['unit'],
+        sku: data?['sku'],
+        ean: data?['ean'],
+        brand: data?['brand'],
+        country: data?['country'],
+        productType: data?['productType'],
+        unitOfMeasurement: data?['unitOfMeasurement'],
+        manufacturerPartNumber: data?['manufacturerPartNumber'],
+        itemDescription: data?['itemDescription'],
+        imageURL: data?['imageURL'],
+        categoryTags: data?['categoryTags'] is Iterable
+            ? List<Map>.from(data?['categoryTags'] ?? [])
+            : [],
+        itemID: data?['itemID'],
+        uid: data?['uid'],
+        isItemAvailable: data?['isItemAvailable'],
+        size: data?['size'],
+        color: data?['color'],
+        length: data?['length'],
+        width: data?['width'],
+        height: data?['height']);
 
     return item;
   }
@@ -667,7 +817,6 @@ class Item {
       'unit': unit,
       'sku': sku,
       'ean': ean,
-      'productID': productID,
       'brand': brand,
       'country': country,
       'productType': productType,
@@ -679,29 +828,37 @@ class Item {
       'itemID': itemID,
       'uid': uid,
       'isItemAvailable': isItemAvailable,
+      'size': size,
+      'color': color,
+      'length': length,
+      'width': width,
+      'height': height
     };
   }
 
   factory Item.fromMap(Map data) {
     return Item(
-      itemName: data['itemName'] ?? '',
-      manufacturer: data['manufacturer'] ?? '',
-      unit: data['unit'] ?? '',
-      sku: data['sku'] ?? '',
-      ean: data['ean'] ?? '',
-      productID: data['productID'] ?? '',
-      brand: data['brand'] ?? '',
-      country: data['country'] ?? '',
-      productType: data['productType'] ?? '',
-      unitOfMeasurement: data['unitOfMeasurement'] ?? '',
-      manufacturerPartNumber: data['manufacturerPartNumber'] ?? '',
-      itemDescription: data['itemDescription'] ?? '',
-      imageURL: data['imageURL'] ?? defaultMerchantImageUrl,
-      categoryTags: List<Map>.from(data['categoryTags'] ?? []),
-      itemID: data['itemID'] ?? '',
-      uid: data['uid'] ?? '',
-      isItemAvailable: data['isItemAvailable'] ?? false,
-    );
+        itemName: data['itemName'] ?? '',
+        manufacturer: data['manufacturer'] ?? '',
+        unit: data['unit'] ?? '',
+        sku: data['sku'] ?? '',
+        ean: data['ean'] ?? '',
+        brand: data['brand'] ?? '',
+        country: data['country'] ?? '',
+        productType: data['productType'] ?? '',
+        unitOfMeasurement: data['unitOfMeasurement'] ?? '',
+        manufacturerPartNumber: data['manufacturerPartNumber'] ?? '',
+        itemDescription: data['itemDescription'] ?? '',
+        imageURL: data['imageURL'] ?? defaultMerchantImageUrl,
+        categoryTags: List<Map>.from(data['categoryTags'] ?? []),
+        itemID: data['itemID'] ?? '',
+        uid: data['uid'] ?? '',
+        isItemAvailable: data['isItemAvailable'] ?? false,
+        size: data['size'] ?? '',
+        color: data['color'] ?? '',
+        length: data['length'] ?? '',
+        width: data['width'] ?? '',
+        height: data['height'] ?? '');
   }
 
   Item.fromJson(Map<String, dynamic> json)
@@ -710,7 +867,6 @@ class Item {
         unit = json['unit'],
         sku = json['sku'],
         ean = json['ean'],
-        productID = json['productID'],
         brand = json['brand'],
         country = json['country'],
         productType = json['productType'],
@@ -730,7 +886,6 @@ class Item {
       'unit': unit,
       'sku': sku,
       'ean': ean,
-      'productID': productID,
       'brand': brand,
       'country': country,
       'productType': productType,
@@ -745,46 +900,52 @@ class Item {
     };
   }
 
-  Item copyWith({
-    String? itemName,
-    String? manufacturer,
-    String? unit,
-    String? sku,
-    String? ean,
-    String? productID,
-    String? brand,
-    String? country,
-    String? productType,
-    String? unitOfMeasurement,
-    String? manufacturerPartNumber,
-    double? price,
-    String? itemDescription,
-    String? imageURL,
-    List<Map>? categoryTags,
-    String? itemID,
-    String? uid,
-    bool? isItemAvailable,
-  }) {
+  Item copyWith(
+      {String? itemName,
+      String? manufacturer,
+      String? unit,
+      String? sku,
+      String? ean,
+      String? brand,
+      String? country,
+      String? productType,
+      String? unitOfMeasurement,
+      String? manufacturerPartNumber,
+      double? price,
+      String? itemDescription,
+      String? imageURL,
+      List<Map>? categoryTags,
+      String? itemID,
+      String? uid,
+      bool? isItemAvailable,
+      String? size,
+      String? color,
+      String? length,
+      String? width,
+      String? height}) {
     return Item(
-      itemName: itemName ?? this.itemName,
-      manufacturer: manufacturer ?? this.manufacturer,
-      unit: unit ?? this.unit,
-      sku: sku ?? this.sku,
-      ean: ean ?? this.ean,
-      productID: productID ?? this.productID,
-      brand: brand ?? this.brand,
-      country: country ?? this.country,
-      productType: productType ?? this.productType,
-      unitOfMeasurement: unitOfMeasurement ?? this.unitOfMeasurement,
-      manufacturerPartNumber:
-          manufacturerPartNumber ?? this.manufacturerPartNumber,
-      itemDescription: itemDescription ?? this.itemDescription,
-      imageURL: imageURL ?? this.imageURL,
-      categoryTags: categoryTags ?? this.categoryTags,
-      itemID: itemID ?? this.itemID,
-      uid: uid ?? this.uid,
-      isItemAvailable: isItemAvailable ?? this.isItemAvailable,
-    );
+        itemName: itemName ?? this.itemName,
+        manufacturer: manufacturer ?? this.manufacturer,
+        unit: unit ?? this.unit,
+        sku: sku ?? this.sku,
+        ean: ean ?? this.ean,
+        brand: brand ?? this.brand,
+        country: country ?? this.country,
+        productType: productType ?? this.productType,
+        unitOfMeasurement: unitOfMeasurement ?? this.unitOfMeasurement,
+        manufacturerPartNumber:
+            manufacturerPartNumber ?? this.manufacturerPartNumber,
+        itemDescription: itemDescription ?? this.itemDescription,
+        imageURL: imageURL ?? this.imageURL,
+        categoryTags: categoryTags ?? this.categoryTags,
+        itemID: itemID ?? this.itemID,
+        uid: uid ?? this.uid,
+        isItemAvailable: isItemAvailable ?? this.isItemAvailable,
+        size: size ?? this.size,
+        color: color ?? this.color,
+        length: length ?? this.length,
+        width: width ?? this.width,
+        height: height ?? this.height);
   }
 
   void copyFromChangeNotifier(ItemChangeNotifier notifier) {
@@ -793,7 +954,6 @@ class Item {
     unit = notifier.unit;
     sku = notifier.sku;
     ean = notifier.ean;
-    productID = notifier.productID;
     brand = notifier.brand;
     country = notifier.country;
     productType = notifier.productType;
@@ -805,7 +965,104 @@ class Item {
     itemID = notifier.itemID;
     uid = notifier.uid;
     isItemAvailable = notifier.isItemAvailable;
+    size = notifier.size;
+    color = notifier.color;
+    length = notifier.length;
+    width = notifier.width;
+    height = notifier.height;
   }
+
+  void update({
+    String? itemName,
+    String? manufacturer,
+    String? unit,
+    String? sku,
+    String? ean,
+    String? brand,
+    String? country,
+    String? productType,
+    String? unitOfMeasurement,
+    String? manufacturerPartNumber,
+    String? itemDescription,
+    String? imageURL,
+    List<Map>? categoryTags,
+    String? itemID,
+    String? uid,
+    bool? isItemAvailable,
+    String? size,
+    String? color,
+    String? length,
+    String? width,
+    String? height,
+  }) {
+    if (itemName != null) {
+      this.itemName = itemName;
+    }
+    if (manufacturer != null) {
+      this.manufacturer = manufacturer;
+    }
+    if (unit != null) {
+      this.unit = unit;
+    }
+    if (sku != null) {
+      this.sku = sku;
+    }
+    if (ean != null) {
+      this.ean = ean;
+    }
+    if (brand != null) {
+      this.brand = brand;
+    }
+    if (country != null) {
+      this.country = country;
+    }
+    if (productType != null) {
+      this.productType = productType;
+    }
+    if (unitOfMeasurement != null) {
+      this.unitOfMeasurement = unitOfMeasurement;
+    }
+    if (manufacturerPartNumber != null) {
+      this.manufacturerPartNumber = manufacturerPartNumber;
+    }
+    if (itemDescription != null) {
+      this.itemDescription = itemDescription;
+    }
+    if (imageURL != null) {
+      this.imageURL = imageURL;
+    }
+    if (categoryTags != null) {
+      this.categoryTags = categoryTags;
+    }
+    if (itemID != null) {
+      this.itemID = itemID;
+    }
+    if (uid != null) {
+      this.uid = uid;
+    }
+    if (isItemAvailable != null) {
+      this.isItemAvailable = isItemAvailable;
+    }
+    if (size != null) {
+      this.size = size;
+    }
+    if (color != null) {
+      this.color = color;
+    }
+    if (length != null) {
+      this.length = length;
+    }
+    if (width != null) {
+      this.width = width;
+    }
+    if (height != null) {
+      this.height = height;
+    }
+
+    // Notify listeners that the item has been updated
+    notifyListeners();
+  }
+
 }
 
 class ItemChangeNotifier with ChangeNotifier {
@@ -814,7 +1071,6 @@ class ItemChangeNotifier with ChangeNotifier {
   String? unit;
   String? sku;
   String? ean;
-  String? productID;
   String? brand;
   String? country;
   String? productType;
@@ -826,53 +1082,64 @@ class ItemChangeNotifier with ChangeNotifier {
   String? itemID;
   String? uid;
   bool? isItemAvailable;
+  String? size;
+  String? color;
+  String? length;
+  String? width;
+  String? height;
 
-  ItemChangeNotifier({
-    this.itemName,
-    this.manufacturer,
-    this.unit,
-    this.sku,
-    this.ean,
-    this.productID,
-    this.brand,
-    this.country,
-    this.productType,
-    this.unitOfMeasurement,
-    this.manufacturerPartNumber,
-    this.itemDescription,
-    this.imageURL,
-    this.categoryTags,
-    this.itemID,
-    this.uid,
-    this.isItemAvailable,
-  });
+  ItemChangeNotifier(
+      {this.itemName,
+      this.manufacturer,
+      this.unit,
+      this.sku,
+      this.ean,
+      this.brand,
+      this.country,
+      this.productType,
+      this.unitOfMeasurement,
+      this.manufacturerPartNumber,
+      this.itemDescription,
+      this.imageURL,
+      this.categoryTags,
+      this.itemID,
+      this.uid,
+      this.isItemAvailable,
+      this.size,
+      this.color,
+      this.length,
+      this.width,
+      this.height});
 
-  void update({
-    String? itemName,
-    String? manufacturer,
-    String? unit,
-    String? sku,
-    String? ean,
-    String? productID,
-    String? brand,
-    String? country,
-    String? productType,
-    String? unitOfMeasurement,
-    String? manufacturerPartNumber,
-    double? price,
-    String? itemDescription,
-    String? imageURL,
-    List<Map>? categoryTags,
-    String? itemID,
-    String? uid,
-    bool? isItemAvailable,
-  }) {
+  void update(
+      {String? itemName,
+      String? manufacturer,
+      String? unit,
+      String? sku,
+      String? ean,
+      String? productID,
+      String? brand,
+      String? country,
+      String? productType,
+      String? unitOfMeasurement,
+      String? manufacturerPartNumber,
+      double? price,
+      String? itemDescription,
+      String? imageURL,
+      List<Map>? categoryTags,
+      String? itemID,
+      String? uid,
+      bool? isItemAvailable,
+      String? size,
+      String? color,
+      String? length,
+      String? width,
+      String? height}) {
     this.itemName = itemName ?? this.itemName;
     this.manufacturer = manufacturer ?? this.manufacturer;
     this.unit = unit ?? this.unit;
     this.sku = sku ?? this.sku;
     this.ean = ean ?? this.ean;
-    this.productID = productID ?? this.productID;
     this.brand = brand ?? this.brand;
     this.country = country ?? this.country;
     this.productType = productType ?? this.productType;
@@ -885,7 +1152,11 @@ class ItemChangeNotifier with ChangeNotifier {
     this.itemID = itemID ?? this.itemID;
     this.uid = uid ?? this.uid;
     this.isItemAvailable = isItemAvailable ?? this.isItemAvailable;
-
+    this.size = size ?? this.size;
+    this.color = color ?? this.color;
+    this.length = length ?? this.length;
+    this.width = width ?? this.width;
+    this.height = height ?? this.height;
     notifyListeners();
   }
 
@@ -895,7 +1166,6 @@ class ItemChangeNotifier with ChangeNotifier {
     unit = item.unit;
     sku = item.sku;
     ean = item.ean;
-    productID = item.productID;
     brand = item.brand;
     country = item.country;
     productType = item.productType;
@@ -907,6 +1177,11 @@ class ItemChangeNotifier with ChangeNotifier {
     itemID = item.itemID;
     uid = item.uid;
     isItemAvailable = item.isItemAvailable;
+    size = item.size;
+    color = item.color;
+    length = item.length;
+    width = item.width;
+    height = item.height;
   }
 }
 
@@ -961,5 +1236,147 @@ class StockLocation {
       'parentLocationID': parentLocationID,
       'locationAddress': locationAddress,
     };
+  }
+}
+
+class SupplierChangeNotifier extends ChangeNotifier {
+  String? supplierName;
+  String? contactNumber;
+  String? contactPerson;
+  String? email;
+  String? address;
+  String? supplierID;
+
+  SupplierChangeNotifier.fromSupplier(Supplier supplier) {
+    supplierName = supplier.supplierName;
+    contactPerson = supplier.contactPerson;
+    email = supplier.email;
+    contactNumber = supplier.contactNumber;
+    address = supplier.address;
+    supplierID = supplier.supplierID;
+
+    notifyListeners();
+  }
+
+  // Method to update the user profile
+  void update({
+    String? supplierName,
+    String? contactNumber,
+    String? contactPerson,
+    String? email,
+    String? address,
+    String? supplierID,
+  }) {
+    if (supplierName != null) {
+      this.supplierName = supplierName;
+    }
+    if (contactPerson != null) {
+      this.contactPerson = contactPerson;
+    }
+    if (contactNumber != null) {
+      this.contactNumber = contactNumber;
+    }
+    if (address != null) {
+      this.address = address;
+    }
+    if (email != null) {
+      this.email = email;
+    }
+
+    // Notify listeners that the user profile has been updated
+    notifyListeners();
+  }
+}
+
+class ImageFile with ChangeNotifier {
+  File? _file;
+
+  File? get file => _file;
+
+  set file(File? imageFile) {
+    _file = imageFile;
+    notifyListeners();
+  }
+}
+
+class ImageStorageUploadData extends ChangeNotifier {
+  String? _imageUrl;
+
+  String? get imageUrl => _imageUrl;
+
+  set newImageUrl(String? newImageUrl) {
+    _imageUrl = newImageUrl;
+    notifyListeners();
+  }
+}
+
+class AsyncCategorySelectionDataNotifier
+    extends AsyncNotifier<List<CategorySelectionData>> {
+  @override
+  Future<List<CategorySelectionData>> build() {
+    final user = ref.watch(userProfileProvider);
+    String? uid = user.asData!.value.uid;
+
+    var data = categoryController.getCategoryListWithSelection(uid: uid);
+    Future<List<CategorySelectionData>> _list = data;
+    return _list;
+  }
+
+  Future<void> resetState() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final user = ref.watch(userProfileProvider);
+      String? uid = user.asData!.value.uid;
+      var data = categoryController.getCategoryListWithSelection(uid: uid);
+      Future<List<CategorySelectionData>> _list = data;
+      return _list;
+    });
+  }
+}
+
+class ItemCategorySelection extends ChangeNotifier {
+  List<Category> _categoryList = [];
+
+  List<Category>? get categoryList => _categoryList;
+
+  set newCategoryList(List<Category> newCategoryList) {
+    _categoryList = newCategoryList;
+    notifyListeners();
+  }
+}
+
+class CategoriesNotifier extends Notifier<List<Category>> {
+  @override
+  List<Category> build() {
+    return [];
+  }
+
+  void addCategory(Category category) {
+    state = [...state, category];
+  }
+
+  void removeCategory(String categoryID) {
+    state = [
+      for (final category in state)
+        if (category.categoryID != categoryID) category
+    ];
+  }
+
+  void resetState() {
+    state = [];
+  }
+
+  Future<void> updateCategories(
+      List<Map<dynamic, dynamic>> categoryIDsToSelect, String uid) async {
+    try {
+      final categories = categoryIDsToSelect
+          .map((categoryID) =>
+              Category(categoryID: categoryID['categoryID'], uid: uid))
+          .toList();
+      state = [...state, ...categories];
+    } catch (e) {
+      // Handle exception
+      debugPrint('Error updating categories: $e');
+    }
   }
 }

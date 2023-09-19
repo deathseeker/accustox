@@ -1,8 +1,14 @@
+import 'dart:io';
+import 'dart:ui';
+import 'package:accustox/color_scheme.dart';
+import 'package:accustox/controllers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'models.dart';
 import 'services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -11,6 +17,8 @@ class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _firebaseStorage = FirebaseStorage.instance;
   final Services _services = Services();
+  final ImagePicker imagePicker = ImagePicker();
+  final ImageCropper imageCropper = ImageCropper();
 
   DatabaseService._privateConstructor();
 
@@ -34,6 +42,10 @@ class DatabaseService {
         merchantRef.collection('BusinessData').doc('Salespersons');
     final DocumentReference locationsRef =
         merchantRef.collection('InventoryData').doc('Locations');
+    final DocumentReference suppliersRef =
+        merchantRef.collection('InventoryData').doc('Suppliers');
+    final DocumentReference customersRef =
+        merchantRef.collection('BusinessData').doc('Customers');
 
     await _firestore.runTransaction((transaction) async {
       transaction.set(merchantRef, userProfile.toFirestore());
@@ -41,11 +53,9 @@ class DatabaseService {
       transaction.set(itemsRef, {'itemList': []});
       transaction.set(salespersonRef, {'salespersonList': []});
       transaction.set(locationsRef, {'stockLocationList': []});
+      transaction.set(suppliersRef, {'suppliersList': []});
+      transaction.set(customersRef, {'customerList': []});
     });
-    return _firestore
-        .collection('Users')
-        .doc(uid)
-        .set(userProfile.toFirestore());
   }
 
   Future<bool> checkNewUser() async {
@@ -141,6 +151,52 @@ class DatabaseService {
     await _firestore.runTransaction((transaction) async {
       transaction.update(documentReference, {
         'categoryList': FieldValue.arrayUnion([category.toFirestore()])
+      });
+    });
+  }
+
+  Future<void> addSupplier(String uid, Supplier supplier) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('InventoryData')
+        .doc('Suppliers');
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(documentReference, {
+        'supplierList': FieldValue.arrayUnion([supplier.toFirestore()])
+      });
+    });
+  }
+
+  Future<void> removeSupplier(String uid, Supplier supplier) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('InventoryData')
+        .doc('Suppliers');
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(documentReference, {
+        'supplierList': FieldValue.arrayRemove([supplier.toFirestore()])
+      });
+    });
+  }
+
+  Future<void> editSupplier(
+      String uid, Supplier oldSupplier, Supplier newSupplier) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('InventoryData')
+        .doc('Suppliers');
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(documentReference, {
+        'supplierList': FieldValue.arrayRemove([oldSupplier.toFirestore()]),
+      });
+      transaction.update(documentReference, {
+        'supplierList': FieldValue.arrayUnion([newSupplier.toFirestore()])
       });
     });
   }
@@ -353,10 +409,18 @@ class DatabaseService {
         .collection('InventoryData')
         .doc('Items');
 
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(item.itemID);
+
     await _firestore.runTransaction((transaction) async {
       transaction.update(documentReference, {
         'itemList': FieldValue.arrayUnion([item.toFirestore()])
       });
+
+      transaction.set(inventoryReference, item.toFirestore());
     });
   }
 
@@ -510,5 +574,161 @@ class DatabaseService {
         (snapshot) => snapshot.docs
             .map((doc) => StockLocation.fromFirestore(doc))
             .toList());
+  }
+
+  Future<void> addSubLocation(String uid, StockLocation parentLocation,
+      StockLocation subLocation) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('InventoryData')
+        .doc('Locations');
+
+    DocumentReference stockLocationReference = _firestore
+        .doc(parentLocation.documentPath!)
+        .collection('SubLocations')
+        .doc(subLocation.locationID);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(documentReference, {
+        'stockLocationList': FieldValue.arrayUnion([subLocation.toFirestore()])
+      });
+
+      transaction.set(stockLocationReference, subLocation.toFirestore());
+    });
+  }
+
+  Stream<List<Supplier>> streamSupplierDataList(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('InventoryData')
+        .doc('Suppliers')
+        .snapshots()
+        .map((doc) => SupplierDocument.fromFirestore(doc))
+        .map((supplierDocument) => supplierDocument.supplierList!
+            .map((e) => Supplier.fromMap(e))
+            .toList());
+  }
+
+  Stream<List<Customer>> streamCustomerDataList(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('BusinessData')
+        .doc('Customers')
+        .snapshots()
+        .map((doc) => CustomerDocument.fromFirestore(doc))
+        .map((customerDocument) => customerDocument.customerList!
+            .map((e) => Customer.fromMap(e))
+            .toList());
+  }
+
+  Future<void> addCustomer(String uid, Customer customer) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('BusinessData')
+        .doc('Customers');
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(documentReference, {
+        'customerList': FieldValue.arrayUnion([customer.toFirestore()])
+      });
+    });
+  }
+
+  Future<File> getImage(
+      {required bool isSourceCamera, required bool isCropStyleCircle}) async {
+    XFile? xFile = await imagePicker.pickImage(
+        source: isSourceCamera ? ImageSource.camera : ImageSource.gallery);
+    CroppedFile? croppedFile = await cropImage(xFile!, isCropStyleCircle);
+    File file = File(croppedFile.path);
+    final bytes = file.readAsBytesSync().lengthInBytes;
+    return file;
+  }
+
+  Future<void> uploadImage(
+      File image,
+      String uid,
+      String path,
+      ImageStorageUploadData imageStorageUploadData,
+      VoidCallback retryOnError) async {
+    final Reference storageRef = _firebaseStorage.ref();
+    String fileName = _services.nameImage(uid);
+
+    Reference pathRef = storageRef.child('$path/$fileName');
+
+    UploadTask uploadTask = pathRef.putFile(image);
+
+    uploadTask.snapshotEvents.listen((
+      TaskSnapshot taskSnapshot,
+    ) async {
+      switch (taskSnapshot.state) {
+        case TaskState.running:
+          final progress =
+              100.0 * (taskSnapshot.bytesTransferred / taskSnapshot.totalBytes);
+          snackBarController
+              .showSnackBar("Image upload is $progress% complete.");
+          break;
+        case TaskState.paused:
+          snackBarController.showSnackBar("Upload is paused.");
+          break;
+        case TaskState.canceled:
+          snackBarController.showSnackBar("Upload is canceled.");
+          break;
+        case TaskState.error:
+          snackBarController.showSnackBarErrorWithRetry(
+              "Something went wrong with the upload. Retry?", retryOnError);
+          break;
+        case TaskState.success:
+          String url = await taskSnapshot.ref.getDownloadURL();
+          imageStorageUploadData.newImageUrl = url;
+          snackBarController.showSnackBar("Upload is successful.");
+          break;
+      }
+    });
+  }
+
+  Future<UploadTask> uploadCategoryImage(File image, String uid, String path,
+      ImageStorageUploadData imageStorageUploadData) async {
+    final Reference storageRef = _firebaseStorage.ref();
+    String fileName = _services.nameImage(uid);
+
+    Reference pathRef = storageRef.child('$path/$fileName');
+
+    UploadTask uploadTask = pathRef.putFile(image);
+    return uploadTask;
+  }
+
+  Future<UploadTask> uploadItemImage(File image, String uid, String path,
+      ImageStorageUploadData imageStorageUploadData) async {
+    final Reference storageRef = _firebaseStorage.ref();
+    String fileName = _services.nameImage(uid);
+
+    Reference pathRef = storageRef.child('$path/$fileName');
+
+    UploadTask uploadTask = pathRef.putFile(image);
+    return uploadTask;
+  }
+
+  Future<CroppedFile> cropImage(XFile xFile, isCropStyleCircle) async {
+    CroppedFile? croppedFile = await imageCropper.cropImage(
+        sourcePath: xFile.path,
+        maxWidth: 300,
+        maxHeight: 300,
+        aspectRatio: const CropAspectRatio(ratioX: 1.0, ratioY: 1.0),
+        compressQuality: 100,
+        cropStyle: isCropStyleCircle ? CropStyle.circle : CropStyle.rectangle,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Image',
+            toolbarColor: lightColorScheme.surface,
+            toolbarWidgetColor: lightColorScheme.onSurface,
+            backgroundColor: lightColorScheme.background,
+            activeControlsWidgetColor: lightColorScheme.primary,
+          )
+        ]);
+    return croppedFile!;
   }
 }

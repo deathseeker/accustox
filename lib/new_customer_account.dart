@@ -1,4 +1,8 @@
+import 'package:accustox/controllers.dart';
+import 'package:accustox/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'enumerated_values.dart';
 import 'widget_components.dart';
 
@@ -11,19 +15,22 @@ class NewCustomerAccount extends StatelessWidget {
       appBar: AppBar(
         title: const Text('New Customer Account'),
       ),
-      body: const SingleChildScrollView(
+      body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
+              const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8.0),
                 child: CustomerTypeDropDownMenu(),
               ),
-              Divider(),
-              CustomerTypeBody(customerType: CustomerType.individual)
+              const Divider(),
+              Consumer(builder: (context, ref, child) {
+                var customerType = ref.watch(customerTypeProvider);
+                return CustomerTypeBody(customerType: customerType);
+              })
             ],
           ),
         ),
@@ -62,6 +69,8 @@ class IndividualBody extends StatefulWidget {
 }
 
 class _IndividualBodyState extends State<IndividualBody> {
+  final _formKey = GlobalKey<FormState>();
+
   final TextEditingController customerNameController = TextEditingController();
   final TextEditingController contactNumberController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -74,107 +83,145 @@ class _IndividualBodyState extends State<IndividualBody> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
+    customerNameController.dispose();
+    contactNumberController.dispose();
+    emailController.dispose();
+    addressController.dispose();
+    customerNameFocusNode.dispose();
+    contactNumberFocusNode.dispose();
+    emailFocusNode.dispose();
+    addressFocusNode.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Flexible(
-              flex: 3,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextFormField(
-                  controller: customerNameController,
-                  focusNode: customerNameFocusNode,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(), labelText: 'Customer'),
-                  keyboardType: TextInputType.name,
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return 'Please enter customer name';
-                    }
-                    return null;
-                  },
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Flexible(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: customerNameController,
+                    focusNode: customerNameFocusNode,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(), labelText: 'Customer'),
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return 'Please enter customer name';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
               ),
-            ),
-            const Padding(padding: EdgeInsets.only(left: 16.0)),
-            Flexible(
-              flex: 1,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextFormField(
-                  controller: contactNumberController,
-                  focusNode: contactNumberFocusNode,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Contact Number'),
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return 'Please enter contact number';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ),
-            const Padding(padding: EdgeInsets.only(left: 16.0)),
-            Flexible(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextFormField(
-                  controller: emailController,
-                  focusNode: emailFocusNode,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(), labelText: 'Email'),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return 'Please enter email';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: TextFormField(
-            controller: addressController,
-            focusNode: addressFocusNode,
-            decoration: const InputDecoration(
-                border: OutlineInputBorder(), labelText: 'Address'),
-            keyboardType: TextInputType.streetAddress,
-            validator: (value) {
-              if (value!.isEmpty) {
-                return 'Please enter address';
-              }
-              return null;
-            },
+            ],
           ),
-        ),
-        ButtonBar(
-          children: [
-            OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
-            FilledButton(onPressed: () {}, child: const Text('Create Account'))
-          ],
-        )
-      ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: contactNumberController,
+                    focusNode: contactNumberFocusNode,
+                    keyboardType: TextInputType.phone,
+                    textCapitalization: TextCapitalization.characters,
+                    textInputAction: TextInputAction.next,
+                    maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                    maxLength: 11,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Contact Number',
+                        helperText:
+                            'Please follow the following format: 09*********'),
+                    validator: (String? value) {
+                      RegExp numeric = RegExp(r'^[0-9]+$');
+                      bool hasMatch = numeric.hasMatch(value!);
+                      return hasMatch == false || value.isEmpty
+                          ? 'Please enter valid contact number'
+                          : null;
+                    },
+                  ),
+                ),
+              ),
+              const Padding(padding: EdgeInsets.only(left: 16.0)),
+              Flexible(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TextFormField(
+                    controller: emailController,
+                    focusNode: emailFocusNode,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Email (Optional)'),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: TextFormField(
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              controller: addressController,
+              focusNode: addressFocusNode,
+              decoration: const InputDecoration(
+                  border: OutlineInputBorder(), labelText: 'Address'),
+              keyboardType: TextInputType.streetAddress,
+              textInputAction: TextInputAction.done,
+              validator: (value) {
+                if (value!.isEmpty) {
+                  return 'Please enter address';
+                }
+                return null;
+              },
+            ),
+          ),
+          ButtonBar(
+            children: [
+              Consumer(builder: (context, ref, child) {
+                var user = ref.watch(userProvider);
+                var customerType = ref.watch(customerTypeProvider);
+                return FilledButton(
+                    onPressed: user == null
+                        ? null
+                        : () =>
+                            customerController.reviewAndSubmitCustomerProfile(
+                                formKey: _formKey,
+                                customerName: customerNameController.text,
+                                contactPerson: '',
+                                email: emailController.text,
+                                contactNumber: contactNumberController.text,
+                                address: addressController.text,
+                                customerType: customerType.label,
+                                uid: user.uid),
+                    child: const Text('Create Account'));
+              })
+            ],
+          )
+        ],
+      ),
     );
   }
 }
@@ -187,6 +234,8 @@ class OrganizationBody extends StatefulWidget {
 }
 
 class _OrganizationBody extends State<OrganizationBody> {
+  final _formKey = GlobalKey<FormState>();
+
   final TextEditingController customerNameController = TextEditingController();
   final TextEditingController contactNumberController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -201,132 +250,171 @@ class _OrganizationBody extends State<OrganizationBody> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
+    customerNameController.dispose();
+    contactNumberController.dispose();
+    emailController.dispose();
+    addressController.dispose();
+    customerNameFocusNode.dispose();
+    contactNumberFocusNode.dispose();
+    emailFocusNode.dispose();
+    addressFocusNode.dispose();
+    contactPersonController.dispose();
+    contactPersonFocusNode.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Flexible(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextFormField(
-                  controller: customerNameController,
-                  focusNode: customerNameFocusNode,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Business/Organization Name'),
-                  keyboardType: TextInputType.name,
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return 'Please enter business or organization name';
-                    }
-                    return null;
-                  },
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Flexible(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: customerNameController,
+                    focusNode: customerNameFocusNode,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Business/Organization Name'),
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return 'Please enter business or organization name';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
               ),
-            ),
-            const Padding(padding: EdgeInsets.only(left: 16.0)),
-            Flexible(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextFormField(
-                  controller: contactPersonController,
-                  focusNode: contactPersonFocusNode,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Contact Person'),
-                  keyboardType: TextInputType.name,
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return 'Please enter contact person';
-                    }
-                    return null;
-                  },
+              const Padding(padding: EdgeInsets.only(left: 16.0)),
+              Flexible(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: contactPersonController,
+                    focusNode: contactPersonFocusNode,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Contact Person'),
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return 'Please enter contact person';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            Flexible(
-              flex: 1,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextFormField(
-                  controller: contactNumberController,
-                  focusNode: contactNumberFocusNode,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Contact Number'),
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return 'Please enter contact number';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ),
-            const Padding(padding: EdgeInsets.only(left: 16.0)),
-            Flexible(
-              flex: 1,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextFormField(
-                  controller: emailController,
-                  focusNode: emailFocusNode,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(), labelText: 'Email'),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return 'Please enter email';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: TextFormField(
-            controller: addressController,
-            focusNode: addressFocusNode,
-            decoration: const InputDecoration(
-                border: OutlineInputBorder(), labelText: 'Address'),
-            keyboardType: TextInputType.streetAddress,
-            validator: (value) {
-              if (value!.isEmpty) {
-                return 'Please enter address';
-              }
-              return null;
-            },
+            ],
           ),
-        ),
-        ButtonBar(
-          children: [
-            OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
-            FilledButton(onPressed: () {}, child: const Text('Create Account'))
-          ],
-        )
-      ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: contactNumberController,
+                    focusNode: contactNumberFocusNode,
+                    keyboardType: TextInputType.phone,
+                    textCapitalization: TextCapitalization.characters,
+                    textInputAction: TextInputAction.next,
+                    maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                    maxLength: 11,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Contact Number',
+                        helperText:
+                            'Please follow the following format: 09*********'),
+                    validator: (String? value) {
+                      RegExp numeric = RegExp(r'^[0-9]+$');
+                      bool hasMatch = numeric.hasMatch(value!);
+                      return hasMatch == false || value.isEmpty
+                          ? 'Please enter valid contact number'
+                          : null;
+                    },
+                  ),
+                ),
+              ),
+              const Padding(padding: EdgeInsets.only(left: 16.0)),
+              Flexible(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TextFormField(
+                    controller: emailController,
+                    focusNode: emailFocusNode,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Email (Optional)'),
+                    textInputAction: TextInputAction.next,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: TextFormField(
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              controller: addressController,
+              focusNode: addressFocusNode,
+              decoration: const InputDecoration(
+                  border: OutlineInputBorder(), labelText: 'Address'),
+              keyboardType: TextInputType.streetAddress,
+              textInputAction: TextInputAction.done,
+              validator: (value) {
+                if (value!.isEmpty) {
+                  return 'Please enter address';
+                }
+                return null;
+              },
+            ),
+          ),
+          ButtonBar(
+            children: [
+              Consumer(builder: (context, ref, child) {
+                var user = ref.watch(userProvider);
+                var customerType = ref.watch(customerTypeProvider);
+                return FilledButton(
+                    onPressed: user == null
+                        ? null
+                        : () =>
+                            customerController.reviewAndSubmitCustomerProfile(
+                                formKey: _formKey,
+                                customerName: customerNameController.text,
+                                contactPerson: contactPersonController.text,
+                                email: emailController.text,
+                                contactNumber: contactNumberController.text,
+                                address: addressController.text,
+                                customerType: customerType.label,
+                                uid: user.uid),
+                    child: const Text('Create Account'));
+              })
+            ],
+          )
+        ],
+      ),
     );
   }
 }

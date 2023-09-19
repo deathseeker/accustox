@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models.dart';
 
 abstract class RoutingInterface {
@@ -74,6 +78,14 @@ abstract class NavigationRepositoryInterface {
   navigateToPreviousPage();
 
   navigateToEditProfile();
+
+  navigateToNewSupplier();
+
+  navigateToEditSupplier({required Supplier supplier});
+
+  navigateToNewCustomerAccount();
+
+  navigateToNewItem();
 }
 
 abstract class DialogInterface {
@@ -113,6 +125,23 @@ abstract class DialogInterface {
 
   processRemoveLocation(
       {required String uid, required StockLocation stockLocation});
+
+  processAddSubLocation(
+      {required String uid,
+      required StockLocation parentLocation,
+      required StockLocation subLocation});
+
+  addStockSubLocationDialog(
+      {required BuildContext context,
+      required String uid,
+      required StockLocation parentLocation});
+
+  removeSupplierDialog(
+      {required BuildContext context,
+      required String uid,
+      required Supplier supplier});
+
+  processRemoveSupplier({required String uid, required Supplier supplier});
 }
 
 abstract class CategoryInterface {
@@ -169,6 +198,14 @@ abstract class ItemInterface {
 
   Future<void> updateItem(
       {required String uid, required Item oldItem, required Item newItem});
+
+  reviewAndSubmitItem(
+      {required GlobalKey<FormState> formKey,
+        required ImageFile imageFile,
+        required String uid,
+        required ImageStorageUploadData imageStorageUploadData,
+        required Item item,
+        required WidgetRef ref});
 }
 
 abstract class StockLocationInterface {
@@ -184,4 +221,92 @@ abstract class StockLocationInterface {
       {required String uid, required StockLocation stockLocation});
 
   Stream<List<StockLocation>> streamSubLocationDataList({required String path});
+
+  Future<void> addSubLocation(
+      {required String uid,
+      required StockLocation parentLocation,
+      required StockLocation subLocation});
+}
+
+abstract class SupplierInterface {
+  Stream<List<Supplier>> streamSupplierDataList({required String uid});
+
+  String getSupplierID();
+
+  reviewAndSubmitSupplierProfile(
+      {required GlobalKey<FormState> formKey,
+      required String supplierName,
+      required String contactPerson,
+      required String email,
+      required String contactNumber,
+      required String address,
+      required String uid});
+
+  Future<void> addSupplier({required String uid, required Supplier supplier});
+
+  Future<void> removeSupplier(
+      {required String uid, required Supplier supplier});
+
+  Future<void> editSupplier(
+      {required String uid,
+      required Supplier oldSupplier,
+      required Supplier newSupplier});
+
+  bool hasSupplierChanged(
+      {required Supplier originalSupplier,
+      required SupplierChangeNotifier notifier});
+
+  reviewAndSubmitSupplierUpdate(
+      {required GlobalKey<FormState> formKey,
+        required String uid,
+        required Supplier originalSupplier,
+        required SupplierChangeNotifier notifier});
+}
+
+abstract class CustomerInterface {
+
+  Stream<List<Customer>> streamCustomerDataList({required String uid});
+
+  String getCustomerID();
+
+  Future<void> addCustomer({required String uid, required Customer customer});
+
+  reviewAndSubmitCustomerProfile(
+      {required GlobalKey<FormState> formKey,
+        required String customerName,
+        required String contactPerson,
+        required String email,
+        required String contactNumber,
+        required String address,
+        required String customerType,
+        required String uid});
+}
+
+abstract class ScannerInterface {
+  Future<String> scanBarcode();
+  Future<String> scanQRCode();
+}
+
+abstract class ImageRepositoryInterface {
+  Future<File> getImage(
+      {required bool isSourceCamera, required bool isCropStyleCircle});
+
+  Future<void> uploadImage(
+      {required File image,
+        required String uid,
+        required String path,
+        required ImageStorageUploadData imageStorageUploadData,
+        required VoidCallback retryOnError});
+
+  Future<UploadTask> uploadCategoryImage(
+      {required File image,
+        required String uid,
+        required String path,
+        required ImageStorageUploadData imageStorageUploadData});
+
+  Future<UploadTask> uploadItemImage(
+      {required File image,
+        required String uid,
+        required String path,
+        required ImageStorageUploadData imageStorageUploadData});
 }

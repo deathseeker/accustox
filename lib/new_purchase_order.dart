@@ -39,27 +39,7 @@ class _NewPurchaseOrderState extends State<NewPurchaseOrder> {
   @override
   Widget build(BuildContext context) {
     final List<Supplier> supplierList = [
-      Supplier(
-          'Supplier Name',
-          '09123456789',
-          'Contact Person Name',
-          'sample@sample.com',
-          'Purok Cebuano, Poblacion, Malungon, Sarangani Province',
-          'Net 60'),
-      Supplier(
-          'Supplier With A Very Long Name',
-          '09123456789',
-          'Contact Person Name',
-          'sample@sample.com',
-          'Purok Cebuano, Poblacion, Malungon, Sarangani Province',
-          'Net 60'),
-      Supplier(
-          'Supplier Name',
-          '09123456789',
-          'Contact Person Name',
-          'sample@sample.com',
-          'Purok Cebuano, Poblacion, Malungon, Sarangani Province',
-          'Net 60'),
+
     ];
 
     final List<DropdownMenuEntry<Supplier>> supplierEntries =

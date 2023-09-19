@@ -1,7 +1,9 @@
-import 'dart:ui';
+import 'dart:async';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'database.dart';
 import 'main.dart';
 import 'models.dart';
@@ -177,6 +179,22 @@ class NavigationController {
   navigateToEditProfile() {
     return _navigationRepository.navigateToEditProfile();
   }
+
+  navigateToNewSupplier() {
+    return _navigationRepository.navigateToNewSupplier();
+  }
+
+  navigateToEditSupplier({required Supplier supplier}) {
+    return _navigationRepository.navigateToEditSupplier(supplier: supplier);
+  }
+
+  navigateToNewCustomerAccount() {
+    return _navigationRepository.navigateToNewCustomerAccount();
+  }
+
+  navigateToNewItem() {
+    return _navigationRepository.navigateToNewItem();
+  }
 }
 
 final DialogController dialogController = DialogController();
@@ -253,6 +271,35 @@ class DialogController {
       {required String uid, required StockLocation stockLocation}) {
     return _dialogRepository.processRemoveLocation(
         uid: uid, stockLocation: stockLocation);
+  }
+
+  addStockSubLocationDialog(
+      {required BuildContext context,
+      required String uid,
+      required StockLocation parentLocation}) {
+    return _dialogRepository.addStockSubLocationDialog(
+        context: context, uid: uid, parentLocation: parentLocation);
+  }
+
+  processAddSubLocation(
+      {required String uid,
+      required StockLocation parentLocation,
+      required StockLocation subLocation}) {
+    return _dialogRepository.processAddSubLocation(
+        uid: uid, parentLocation: parentLocation, subLocation: subLocation);
+  }
+
+  removeSupplierDialog(
+      {required BuildContext context,
+      required String uid,
+      required Supplier supplier}) {
+    return _dialogRepository.removeSupplierDialog(
+        context: context, uid: uid, supplier: supplier);
+  }
+
+  processRemoveSupplier({required String uid, required Supplier supplier}) {
+    return _dialogRepository.processRemoveSupplier(
+        uid: uid, supplier: supplier);
   }
 }
 
@@ -367,6 +414,22 @@ class ItemController {
     return _itemRepository.updateItem(
         uid: uid, oldItem: oldItem, newItem: newItem);
   }
+
+  reviewAndSubmitItem(
+      {required GlobalKey<FormState> formKey,
+      required ImageFile imageFile,
+      required String uid,
+      required ImageStorageUploadData imageStorageUploadData,
+      required Item item,
+      required WidgetRef ref}) {
+    return _itemRepository.reviewAndSubmitItem(
+        formKey: formKey,
+        imageFile: imageFile,
+        uid: uid,
+        imageStorageUploadData: imageStorageUploadData,
+        item: item,
+        ref: ref);
+  }
 }
 
 final StockLocationController stockLocationController =
@@ -400,5 +463,186 @@ class StockLocationController {
   Stream<List<StockLocation>> streamSubLocationDataList(
       {required String path}) {
     return _stockLocationRepository.streamSubLocationDataList(path: path);
+  }
+
+  Future<void> addSubLocation(
+      {required String uid,
+      required StockLocation parentLocation,
+      required StockLocation subLocation}) {
+    return _stockLocationRepository.addSubLocation(
+        uid: uid, parentLocation: parentLocation, subLocation: subLocation);
+  }
+}
+
+final SupplierController supplierController = SupplierController();
+
+class SupplierController {
+  final SupplierRepository _supplierRepository =
+      SupplierRepository(DatabaseService(), Services());
+
+  Stream<List<Supplier>> streamSupplierDataList({required String uid}) {
+    return _supplierRepository.streamSupplierDataList(uid: uid);
+  }
+
+  String getSupplierID() {
+    return _supplierRepository.getSupplierID();
+  }
+
+  reviewAndSubmitSupplierProfile(
+      {required GlobalKey<FormState> formKey,
+      required String supplierName,
+      required String contactPerson,
+      required String email,
+      required String contactNumber,
+      required String address,
+      required String uid}) {
+    return _supplierRepository.reviewAndSubmitSupplierProfile(
+        formKey: formKey,
+        supplierName: supplierName,
+        contactPerson: contactPerson,
+        email: email,
+        contactNumber: contactNumber,
+        address: address,
+        uid: uid);
+  }
+
+  Future<void> addSupplier({required String uid, required Supplier supplier}) {
+    return _supplierRepository.addSupplier(uid: uid, supplier: supplier);
+  }
+
+  Future<void> removeSupplier(
+      {required String uid, required Supplier supplier}) {
+    return _supplierRepository.removeSupplier(uid: uid, supplier: supplier);
+  }
+
+  Future<void> editSupplier(
+      {required String uid,
+      required Supplier oldSupplier,
+      required Supplier newSupplier}) {
+    return _supplierRepository.editSupplier(
+        uid: uid, oldSupplier: oldSupplier, newSupplier: newSupplier);
+  }
+
+  bool hasSupplierChanged(
+      {required Supplier originalSupplier,
+      required SupplierChangeNotifier notifier}) {
+    return _supplierRepository.hasSupplierChanged(
+        originalSupplier: originalSupplier, notifier: notifier);
+  }
+
+  reviewAndSubmitSupplierUpdate(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Supplier originalSupplier,
+      required SupplierChangeNotifier notifier}) {
+    return _supplierRepository.reviewAndSubmitSupplierUpdate(
+        formKey: formKey,
+        uid: uid,
+        originalSupplier: originalSupplier,
+        notifier: notifier);
+  }
+}
+
+final CustomerController customerController = CustomerController();
+
+class CustomerController {
+  final CustomerRepository _customerRepository =
+      CustomerRepository(DatabaseService(), Services());
+
+  Stream<List<Customer>> streamCustomerDataList({required String uid}) {
+    return _customerRepository.streamCustomerDataList(uid: uid);
+  }
+
+  String getCustomerID() {
+    return _customerRepository.getCustomerID();
+  }
+
+  Future<void> addCustomer({required String uid, required Customer customer}) {
+    return _customerRepository.addCustomer(uid: uid, customer: customer);
+  }
+
+  reviewAndSubmitCustomerProfile(
+      {required GlobalKey<FormState> formKey,
+      required String customerName,
+      required String contactPerson,
+      required String email,
+      required String contactNumber,
+      required String address,
+      required String customerType,
+      required String uid}) {
+    return _customerRepository.reviewAndSubmitCustomerProfile(
+        formKey: formKey,
+        customerName: customerName,
+        contactPerson: contactPerson,
+        email: email,
+        contactNumber: contactNumber,
+        address: address,
+        customerType: customerType,
+        uid: uid);
+  }
+}
+
+final ScannerController scannerController = ScannerController();
+
+class ScannerController {
+  final ScannerRepository _scannerRepository = ScannerRepository(Services());
+
+  Future<String> scanBarCode() {
+    return _scannerRepository.scanBarcode();
+  }
+
+  Future<String> scanQRCode() {
+    return _scannerRepository.scanQRCode();
+  }
+}
+
+final ImageDataController imageDataController = imageDataController;
+
+class ImageDataController {
+  final ImageRepository _imageRepository = ImageRepository(DatabaseService());
+
+  Future<File> getImage(
+      {required bool isSourceCamera, required bool isCropStyleCircle}) {
+    return _imageRepository.getImage(
+        isSourceCamera: isSourceCamera, isCropStyleCircle: isCropStyleCircle);
+  }
+
+  Future<void> uploadImage(
+      {required File image,
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData,
+      required VoidCallback retryOnError}) {
+    return _imageRepository.uploadImage(
+        image: image,
+        uid: uid,
+        path: path,
+        imageStorageUploadData: imageStorageUploadData,
+        retryOnError: retryOnError);
+  }
+
+  Future<UploadTask> uploadCategoryImage(
+      {required File image,
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData}) {
+    return _imageRepository.uploadCategoryImage(
+      image: image,
+      uid: uid,
+      path: path,
+      imageStorageUploadData: imageStorageUploadData,
+    );
+  }
+
+  Future<UploadTask> uploadItemImage(
+      {required File image,
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData}) {
+    return _imageRepository.uploadItemImage(
+        image: image,
+        uid: uid,
+        path: path,
+        imageStorageUploadData: imageStorageUploadData);
   }
 }

@@ -16,7 +16,7 @@ class Salespersons extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SalespersonBody(),
+        Expanded(child: SalespersonBody()),
       ],
     );
   }

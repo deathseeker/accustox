@@ -1,6 +1,9 @@
 
 
 import 'package:accustox/edit_profile.dart';
+import 'package:accustox/new_customer_account.dart';
+import 'package:accustox/new_item.dart';
+import 'package:accustox/new_supplier.dart';
 import 'package:flutter/material.dart';
 import 'app_open_splash.dart';
 import 'create_profile.dart';
@@ -16,6 +19,9 @@ Map<String, Widget Function(BuildContext)> routes(BuildContext context) {
     'appOpenSplash': (context) => const AppOpenSplash(),
     'errorSplash': (context) => const ErrorSplash(),
     'editProfile': (context) =>  const EditProfile(),
+    'newSupplier': (context) => const NewSupplier(),
+    'newCustomerAccount': (context) => const NewCustomerAccount(),
+    'newItem': (context) => const NewItem()
   };
 
   return routes;

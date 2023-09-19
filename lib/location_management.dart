@@ -13,7 +13,7 @@ class LocationManagement extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LocationManagementBody(),
+        Expanded(child: LocationManagementBody()),
       ],
     );
   }
@@ -25,7 +25,6 @@ class LocationAddButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     var user = ref.watch(userProvider);
-
 
     return FilledButton.icon(
       onPressed: user == null
@@ -48,7 +47,7 @@ class LocationManagementBody extends ConsumerWidget {
     return stockLocationList.when(
         data: (data) => LocationsGrid(stockLocationList: data),
         error: (e, st) =>
-        const ErrorMessage(errorMessage: 'Something went wrong...'),
+            const ErrorMessage(errorMessage: 'Something went wrong...'),
         loading: () => const LoadingWidget());
   }
 }
@@ -60,23 +59,26 @@ class LocationsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    stockLocationList.sort((a, b) =>
+        a.locationName.toLowerCase().compareTo(b.locationName.toLowerCase()));
+
     return stockLocationList.isEmpty
         ? const ErrorMessage(
-        errorMessage: 'There are no locations listed yet...')
+            errorMessage: 'There are no locations listed yet...')
         : GridView.builder(
-      shrinkWrap: true,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 8.0,
-          crossAxisSpacing: 8.0,
-          childAspectRatio: 3.0),
-      itemBuilder: (context, index) {
-        StockLocation data = stockLocationList[index];
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8.0,
+                crossAxisSpacing: 8.0,
+                childAspectRatio: 3.0),
+            itemBuilder: (context, index) {
+              StockLocation data = stockLocationList[index];
 
-        return StockLocationCard(stockLocation: data);
-      },
-      itemCount: stockLocationList.length,
-    );
+              return StockLocationCard(stockLocation: data);
+            },
+            itemCount: stockLocationList.length,
+          );
   }
 }
 
@@ -90,14 +92,10 @@ class LocationManagementFAB extends ConsumerWidget {
     return FloatingActionButton.extended(
       onPressed: user == null
           ? null
-          : () =>
-          dialogController.addStockLocationDialog(
+          : () => dialogController.addStockLocationDialog(
               context: context, uid: user.uid),
       label: const Text('Add Location'),
       icon: const Icon(Icons.add_location_outlined),
     );
-
   }
 }
-
-

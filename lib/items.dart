@@ -1,3 +1,4 @@
+import 'controllers.dart';
 import 'models.dart';
 import 'providers.dart';
 import 'widget_components.dart';
@@ -33,10 +34,10 @@ class ItemGrid extends ConsumerWidget {
               : GridView.builder(
                   shrinkWrap: true,
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 300,
+                      maxCrossAxisExtent: 350,
                       mainAxisSpacing: 8.0,
                       crossAxisSpacing: 8.0,
-                      childAspectRatio: 3),
+                      childAspectRatio: 4),
                   itemBuilder: (context, index) {
                     Item data = list[index];
                     return ItemCard(
@@ -90,12 +91,25 @@ class _ItemsBodyState extends ConsumerState<ItemsBody> {
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: ItemCategoryFilterChips(data),
               ),
-              const ItemGrid()
+              const Expanded(child: ItemGrid())
             ],
           );
         },
         error: (e, st) =>
             const ErrorMessage(errorMessage: 'Something went wrong...'),
         loading: () => const LoadingWidget());
+  }
+}
+
+class ItemsFAB extends StatelessWidget {
+  const ItemsFAB({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+      onPressed: () => navigationController.navigateToNewItem(),
+      label: const Text('Add Item'),
+      icon: const Icon(Icons.add_circle_outline),
+    );
   }
 }

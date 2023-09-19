@@ -1,4 +1,7 @@
-import 'enumerated_values.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
+
+import 'edit_supplier.dart';
 import 'providers.dart';
 import 'widget_components.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -186,15 +189,45 @@ class Services {
     return navigatorKey.currentState?.pushNamed('editProfile');
   }
 
+  navigateToNewSupplier() {
+    return navigatorKey.currentState?.pushNamed('newSupplier');
+  }
+
+  navigateToEditSupplier(Supplier supplier) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) => EditSupplier(supplier: supplier)));
+  }
+
+  navigateToNewCustomerAccount() {
+    return navigatorKey.currentState?.pushNamed('newCustomerAccount');
+  }
+
+  navigateToNewItem() {
+    return navigatorKey.currentState?.pushNamed('newItem');
+  }
+
   bool hasProfileChanged(
       UserProfile originalProfile, UserProfileChangeNotifier notifier) {
     if (notifier.ownerName != originalProfile.ownerName ||
         notifier.businessName != originalProfile.businessName ||
         notifier.contactNumber != originalProfile.contactNumber ||
         notifier.address != originalProfile.address ||
-        notifier.contactNumber != originalProfile.contactNumber ||
         notifier.email != originalProfile.email ||
         notifier.uid != originalProfile.uid) {
+      return true;
+    }
+
+    return false;
+  }
+
+  bool hasSupplierChanged(
+      Supplier originalSupplier, SupplierChangeNotifier notifier) {
+    if (notifier.supplierName != originalSupplier.supplierName ||
+        notifier.contactPerson != originalSupplier.contactPerson ||
+        notifier.contactNumber != originalSupplier.contactNumber ||
+        notifier.address != originalSupplier.address ||
+        notifier.email != originalSupplier.email ||
+        notifier.supplierID != originalSupplier.supplierID) {
       return true;
     }
 
@@ -479,18 +512,21 @@ class Services {
     return id;
   }
 
+  String getSupplierID() {
+    String id = uuid.v4();
+    return id;
+  }
+
+  String getCustomerID() {
+    String id = uuid.v4();
+    return id;
+  }
+
   addStockLocationDialog(BuildContext context, String uid) {
     final TextEditingController locationNameController =
         TextEditingController();
     final TextEditingController descriptionController = TextEditingController();
-    final TextEditingController typeController = TextEditingController();
-
     final formKey = GlobalKey<FormState>();
-
-    InventoryLocationType? handleLocationType(
-        InventoryLocationType? selectedType) {
-      return selectedType;
-    }
 
     showDialog(
         context: context,
@@ -630,5 +666,353 @@ class Services {
       snackBarController.showSnackBar('Process successful...');
     }).onError((error, stackTrace) => snackBarController
             .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  addStockSubLocationDialog(
+      BuildContext context, String uid, StockLocation parentLocation) {
+    final TextEditingController locationNameController =
+        TextEditingController();
+    final TextEditingController descriptionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Add Location'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const LocationTypeDropDownMenu(),
+                      const Padding(padding: EdgeInsets.only(top: 8.0)),
+                      TextFormField(
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: locationNameController,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Stock Location Name'),
+                        keyboardType: TextInputType.name,
+                        textInputAction: TextInputAction.done,
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return "Please enter stock location's name";
+                          }
+                          return null;
+                        },
+                      ),
+                      const Padding(padding: EdgeInsets.only(top: 8.0)),
+                      TextFormField(
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: descriptionController,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Location Description (Optional)'),
+                        keyboardType: TextInputType.name,
+                        textInputAction: TextInputAction.done,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  Consumer(builder: (context, ref, child) {
+                    var type = ref.watch(inventoryLocationTypeProvider);
+                    return FilledButton(
+                        onPressed: () {
+                          var isValid = formKey.currentState!.validate();
+                          var locationID =
+                              stockLocationController.getLocationID();
+
+                          !isValid
+                              ? null
+                              : dialogController.processAddSubLocation(
+                                  uid: uid,
+                                  parentLocation: parentLocation,
+                                  subLocation: StockLocation(
+                                      locationID: locationID,
+                                      locationName: locationNameController.text,
+                                      description: descriptionController.text,
+                                      type: type.label,
+                                      parentLocationID:
+                                          parentLocation.parentLocationID,
+                                      locationAddress:
+                                          '${locationNameController.text}, ${parentLocation.locationAddress}'));
+                        },
+                        child: const Text('Confirm'));
+                  })
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  processAddSubLocation(
+      String uid, StockLocation parentLocation, StockLocation subLocation) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(message: 'Adding new location...');
+    stockLocationController
+        .addSubLocation(
+            uid: uid, parentLocation: parentLocation, subLocation: subLocation)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('New location successfully added...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  reviewAndSubmitSupplierProfile(
+      {required GlobalKey<FormState> formKey,
+      required String supplierName,
+      required String contactPerson,
+      required String email,
+      required String contactNumber,
+      required String address,
+      required String uid}) {
+    bool isValid = formKey.currentState!.validate();
+    var supplierID = supplierController.getSupplierID();
+
+    if (!isValid) {
+      snackBarController.showSnackBarError('Please provide valid information.');
+    } else {
+      var supplier = Supplier(
+          supplierName: supplierName,
+          contactNumber: contactNumber,
+          contactPerson: contactPerson,
+          email: email,
+          address: address,
+          supplierID: supplierID);
+
+      snackBarController.showLoadingSnackBar(
+          message: 'Creating supplier profile...');
+      supplierController
+          .addSupplier(uid: uid, supplier: supplier)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar('New supplier successfully added...');
+        navigationController.navigateToPreviousPage();
+      }).onError((error, stackTrace) => snackBarController.showSnackBarError(
+              'Something went wrong while creating supplier profile...'));
+    }
+  }
+
+  removeSupplierDialog(BuildContext context, String uid, Supplier supplier) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Remove Supplier'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to remove ${supplier.supplierName} from your list of suppliers?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () => dialogController.processRemoveSupplier(
+                          uid: uid, supplier: supplier),
+                      child: const Text('Confirm'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  processRemoveSupplier(String uid, Supplier supplier) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(
+        message: 'Removing ${supplier.supplierName} from list of suppliers...');
+    supplierController
+        .removeSupplier(uid: uid, supplier: supplier)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('Process successful...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  reviewAndSubmitSupplierUpdate(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Supplier originalSupplier,
+      required SupplierChangeNotifier notifier}) {
+    bool isValid = formKey.currentState!.validate();
+    bool hasChanged = supplierController.hasSupplierChanged(
+        originalSupplier: originalSupplier, notifier: notifier);
+
+    if (!isValid) {
+      snackBarController.showSnackBarError('Please provide valid information.');
+    } else if (!hasChanged) {
+      snackBarController
+          .showSnackBar('You have made no changes to the supplier profile...');
+    } else {
+      var newSupplier = Supplier(
+          supplierName: notifier.supplierName!,
+          contactNumber: notifier.contactNumber!,
+          contactPerson: notifier.contactPerson!,
+          email: notifier.email!,
+          address: notifier.address!,
+          supplierID: notifier.supplierID!);
+
+      snackBarController.showSnackBar('Updating profile...');
+      supplierController
+          .editSupplier(
+              uid: uid, oldSupplier: originalSupplier, newSupplier: newSupplier)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar('Supplier successfully updated...');
+        navigateToPreviousPage();
+      }).onError((error, stackTrace) => snackBarController.showSnackBarError(
+              'Something went wrong with the process, try again later...'));
+    }
+  }
+
+  reviewAndSubmitCustomerProfile(
+      {required GlobalKey<FormState> formKey,
+      required String customerName,
+      required String contactPerson,
+      required String email,
+      required String contactNumber,
+      required String address,
+      required String customerType,
+      required String uid}) {
+    bool isValid = formKey.currentState!.validate();
+    var customerID = customerController.getCustomerID();
+
+    if (!isValid) {
+      snackBarController.showSnackBarError('Please provide valid information.');
+    } else {
+      var customer = Customer(
+          customerID: customerID,
+          customerName: customerName,
+          customerType: customerType,
+          contactPerson: contactPerson,
+          contactNumber: contactNumber,
+          email: email,
+          address: address);
+
+      snackBarController.showLoadingSnackBar(
+          message: 'Creating customer profile...');
+      customerController
+          .addCustomer(uid: uid, customer: customer)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar('New customer successfully added...');
+        navigationController.navigateToPreviousPage();
+      }).onError((error, stackTrace) => snackBarController.showSnackBarError(
+              'Something went wrong while creating supplier profile...'));
+    }
+  }
+
+  Future<String> scanBarcode() async {
+    String barcodeData = await FlutterBarcodeScanner.scanBarcode(
+        '#FFB7211D', 'Cancel', false, ScanMode.BARCODE);
+
+    return barcodeData;
+  }
+
+  Future<String> scanQRCode() async {
+    String qrCodeData = await FlutterBarcodeScanner.scanBarcode(
+        '#FFB7211D', 'Cancel', false, ScanMode.QR);
+
+    return qrCodeData;
+  }
+
+  String nameImage(String uid) {
+    String strUuid = uuid.v4();
+    String fileName = '${uid}_$strUuid';
+    return fileName;
+  }
+
+  reviewAndSubmitItem(
+      {required GlobalKey<FormState> formKey,
+      required ImageFile imageFile,
+      required String uid,
+      required ImageStorageUploadData imageStorageUploadData,
+      required Item item,
+      required WidgetRef ref}) async {
+    final ImageDataController _imageDataController = ImageDataController();
+
+    bool isValid = formKey.currentState!.validate();
+    if (imageFile.file == null) {
+      snackBarController
+          .showSnackBarError("Please add the item image to continue");
+    } else if (isValid == false) {
+      snackBarController
+          .showSnackBarError("Kindly review the item information");
+    } else {
+      snackBarController.showLoadingSnackBar(message: "Adding new item...");
+
+      var uploadTask = await _imageDataController.uploadItemImage(
+          image: imageFile.file!,
+          uid: uid,
+          path: 'Users/$uid/Images/Items',
+          imageStorageUploadData: imageStorageUploadData);
+
+      uploadTask.snapshotEvents.listen((TaskSnapshot taskSnapshot) async {
+        switch (taskSnapshot.state) {
+          case TaskState.running:
+            final progress = 100.0 *
+                (taskSnapshot.bytesTransferred / taskSnapshot.totalBytes);
+            snackBarController.hideCurrentSnackBar();
+            snackBarController.showLoadingSnackBar(
+                message: "Image upload is $progress% complete...");
+
+            break;
+          case TaskState.paused:
+            snackBarController.showSnackBar("Upload is paused...");
+            break;
+          case TaskState.canceled:
+            snackBarController.showSnackBar("Upload is canceled...");
+            break;
+          case TaskState.error:
+            snackBarController
+                .showSnackBarError("Something went wrong with the upload...");
+            break;
+          case TaskState.success:
+            String url = await taskSnapshot.ref.getDownloadURL();
+            imageStorageUploadData.newImageUrl = url;
+            debugPrint('UploadURL: ${imageStorageUploadData.imageUrl}');
+            snackBarController.showSnackBar("Upload is successful...");
+            var imageURL = imageStorageUploadData.imageUrl;
+            debugPrint(imageURL);
+
+            item.update(imageURL: imageURL);
+
+            itemController.addItem(uid: uid, item: item).whenComplete(() {
+              snackBarController.hideCurrentSnackBar();
+              snackBarController.showSnackBar("Item successfully added...");
+
+              ref
+                  .read(asyncCategorySelectionDataProvider.notifier)
+                  .resetState();
+              ref.read(categorySelectionProvider.notifier).resetState();
+
+              navigationController.navigateToPreviousPage();
+            });
+            break;
+        }
+      });
+    }
   }
 }

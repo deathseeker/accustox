@@ -72,6 +72,10 @@ final inventoryLocationTypeProvider = StateProvider<InventoryLocationType>(
   (ref) => InventoryLocationType.warehouse,
 );
 
+final customerTypeProvider = StateProvider<CustomerType>(
+  (ref) => CustomerType.individual,
+);
+
 StreamProvider<List<StockLocation>> streamLocationListProvider =
     StreamProvider((ref) {
   final user = ref.watch(_userProvider);
@@ -82,4 +86,31 @@ StreamProvider<List<StockLocation>> streamLocationListProvider =
 final streamSubLocationListProvider =
     StreamProvider.autoDispose.family<List<StockLocation>, String>((ref, path) {
   return stockLocationController.streamSubLocationDataList(path: path);
+});
+
+StreamProvider<List<Supplier>> streamSupplierListProvider =
+    StreamProvider((ref) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return supplierController.streamSupplierDataList(uid: uid);
+});
+
+StreamProvider<List<Customer>> streamCustomerListProvider =
+    StreamProvider((ref) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return customerController.streamCustomerDataList(uid: uid);
+});
+
+final asyncCategorySelectionDataProvider = AsyncNotifierProvider<
+    AsyncCategorySelectionDataNotifier, List<CategorySelectionData>>(() {
+  return AsyncCategorySelectionDataNotifier();
+});
+
+Provider<ItemCategorySelection> itemCategorySelectionProvider =
+    Provider<ItemCategorySelection>((ref) => ItemCategorySelection());
+
+final categorySelectionProvider =
+    NotifierProvider<CategoriesNotifier, List<Category>>(() {
+  return CategoriesNotifier();
 });

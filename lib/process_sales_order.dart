@@ -60,8 +60,7 @@ class _ProcessSalesOrderState extends State<ProcessSalesOrder> {
                         '999 Units', '999999.99', 'Php 999999.99'),
                   ],
                   customerList: [
-                    Customer('Customer Name', 'Individual', 'Customer Name',
-                        '09123456789', 'sample@sample.com', 'Address')
+
                   ],
                   salespersonList: [
                     Salesperson(salespersonName: 'Salesperson Name')

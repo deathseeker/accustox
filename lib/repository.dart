@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'database.dart';
 import 'models.dart';
@@ -181,6 +184,26 @@ class NavigationRepository implements NavigationRepositoryInterface {
   navigateToEditProfile() {
     return _services.navigateToEditProfile();
   }
+
+  @override
+  navigateToNewSupplier() {
+    return _services.navigateToNewSupplier();
+  }
+
+  @override
+  navigateToEditSupplier({required Supplier supplier}) {
+    return _services.navigateToEditSupplier(supplier);
+  }
+
+  @override
+  navigateToNewCustomerAccount() {
+    return _services.navigateToNewCustomerAccount();
+  }
+
+  @override
+  navigateToNewItem() {
+    return _services.navigateToNewItem();
+  }
 }
 
 class DialogRepository implements DialogInterface {
@@ -243,18 +266,52 @@ class DialogRepository implements DialogInterface {
   }
 
   @override
-  processAddParentLocation({required String uid, required StockLocation stockLocation}) {
+  processAddParentLocation(
+      {required String uid, required StockLocation stockLocation}) {
     return _services.processAddParentLocation(uid, stockLocation);
   }
 
   @override
-  removeLocationDialog({required BuildContext context, required String uid, required StockLocation stockLocation}) {
+  removeLocationDialog(
+      {required BuildContext context,
+      required String uid,
+      required StockLocation stockLocation}) {
     return _services.removeLocationDialog(context, uid, stockLocation);
   }
 
   @override
-  processRemoveLocation({required String uid, required StockLocation stockLocation}) {
+  processRemoveLocation(
+      {required String uid, required StockLocation stockLocation}) {
     return _services.processRemoveLocation(uid, stockLocation);
+  }
+
+  @override
+  addStockSubLocationDialog(
+      {required BuildContext context,
+      required String uid,
+      required StockLocation parentLocation}) {
+    return _services.addStockSubLocationDialog(context, uid, parentLocation);
+  }
+
+  @override
+  processAddSubLocation(
+      {required String uid,
+      required StockLocation parentLocation,
+      required StockLocation subLocation}) {
+    return _services.processAddSubLocation(uid, parentLocation, subLocation);
+  }
+
+  @override
+  removeSupplierDialog(
+      {required BuildContext context,
+      required String uid,
+      required Supplier supplier}) {
+    return _services.removeSupplierDialog(context, uid, supplier);
+  }
+
+  @override
+  processRemoveSupplier({required String uid, required Supplier supplier}) {
+    return _services.processRemoveSupplier(uid, supplier);
   }
 }
 
@@ -384,6 +441,23 @@ class ItemRepository implements ItemInterface {
       {required String uid, required Item oldItem, required Item newItem}) {
     return _db.updateItem(uid, oldItem, newItem);
   }
+
+  @override
+  reviewAndSubmitItem(
+      {required GlobalKey<FormState> formKey,
+      required ImageFile imageFile,
+      required String uid,
+      required ImageStorageUploadData imageStorageUploadData,
+      required Item item,
+      required WidgetRef ref}) {
+    return _services.reviewAndSubmitItem(
+        formKey: formKey,
+        imageFile: imageFile,
+        uid: uid,
+        imageStorageUploadData: imageStorageUploadData,
+        item: item,
+        ref: ref);
+  }
 }
 
 class StockLocationRepository implements StockLocationInterface {
@@ -398,23 +472,216 @@ class StockLocationRepository implements StockLocationInterface {
   }
 
   @override
-  Future<void> addParentLocation({required String uid, required StockLocation stockLocation}) {
+  Future<void> addParentLocation(
+      {required String uid, required StockLocation stockLocation}) {
     return _db.addParentLocation(uid, stockLocation);
   }
 
   @override
-  Stream<List<StockLocation>> streamParentLocationDataList({required String uid}) {
+  Stream<List<StockLocation>> streamParentLocationDataList(
+      {required String uid}) {
     return _db.streamParentLocationDataList(uid);
   }
 
   @override
-  Future<void> removeParentLocation({required String uid, required StockLocation stockLocation}) {
+  Future<void> removeParentLocation(
+      {required String uid, required StockLocation stockLocation}) {
     return _db.removeParentLocation(uid, stockLocation);
   }
 
   @override
-  Stream<List<StockLocation>> streamSubLocationDataList({required String path}) {
+  Stream<List<StockLocation>> streamSubLocationDataList(
+      {required String path}) {
     return _db.streamSubLocationDataList(path);
   }
 
+  @override
+  Future<void> addSubLocation(
+      {required String uid,
+      required StockLocation parentLocation,
+      required StockLocation subLocation}) {
+    return _db.addSubLocation(uid, parentLocation, subLocation);
+  }
+}
+
+class SupplierRepository implements SupplierInterface {
+  final DatabaseService _db;
+  final Services _services;
+
+  SupplierRepository(this._db, this._services);
+
+  @override
+  Stream<List<Supplier>> streamSupplierDataList({required String uid}) {
+    return _db.streamSupplierDataList(uid);
+  }
+
+  @override
+  String getSupplierID() {
+    return _services.getSupplierID();
+  }
+
+  @override
+  reviewAndSubmitSupplierProfile(
+      {required GlobalKey<FormState> formKey,
+      required String supplierName,
+      required String contactPerson,
+      required String email,
+      required String contactNumber,
+      required String address,
+      required String uid}) {
+    return _services.reviewAndSubmitSupplierProfile(
+        formKey: formKey,
+        supplierName: supplierName,
+        contactPerson: contactPerson,
+        email: email,
+        contactNumber: contactNumber,
+        address: address,
+        uid: uid);
+  }
+
+  @override
+  Future<void> addSupplier({required String uid, required Supplier supplier}) {
+    return _db.addSupplier(uid, supplier);
+  }
+
+  @override
+  Future<void> removeSupplier(
+      {required String uid, required Supplier supplier}) {
+    return _db.removeSupplier(uid, supplier);
+  }
+
+  @override
+  Future<void> editSupplier(
+      {required String uid,
+      required Supplier oldSupplier,
+      required Supplier newSupplier}) {
+    return _db.editSupplier(uid, oldSupplier, newSupplier);
+  }
+
+  @override
+  bool hasSupplierChanged(
+      {required Supplier originalSupplier,
+      required SupplierChangeNotifier notifier}) {
+    return _services.hasSupplierChanged(originalSupplier, notifier);
+  }
+
+  @override
+  reviewAndSubmitSupplierUpdate(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Supplier originalSupplier,
+      required SupplierChangeNotifier notifier}) {
+    return _services.reviewAndSubmitSupplierUpdate(
+        formKey: formKey,
+        uid: uid,
+        originalSupplier: originalSupplier,
+        notifier: notifier);
+  }
+}
+
+class CustomerRepository implements CustomerInterface {
+  final DatabaseService _db;
+  final Services _services;
+
+  CustomerRepository(this._db, this._services);
+
+  @override
+  Stream<List<Customer>> streamCustomerDataList({required String uid}) {
+    return _db.streamCustomerDataList(uid);
+  }
+
+  @override
+  String getCustomerID() {
+    return _services.getCustomerID();
+  }
+
+  @override
+  Future<void> addCustomer({required String uid, required Customer customer}) {
+    return _db.addCustomer(uid, customer);
+  }
+
+  @override
+  reviewAndSubmitCustomerProfile(
+      {required GlobalKey<FormState> formKey,
+      required String customerName,
+      required String contactPerson,
+      required String email,
+      required String contactNumber,
+      required String address,
+      required String customerType,
+      required String uid}) {
+    return _services.reviewAndSubmitCustomerProfile(
+        formKey: formKey,
+        customerName: customerName,
+        contactPerson: contactPerson,
+        email: email,
+        contactNumber: contactNumber,
+        address: address,
+        customerType: customerType,
+        uid: uid);
+  }
+}
+
+class ScannerRepository implements ScannerInterface {
+  final Services _services;
+
+  ScannerRepository(this._services);
+
+  @override
+  Future<String> scanBarcode() {
+    return _services.scanBarcode();
+  }
+
+  @override
+  Future<String> scanQRCode() {
+    return _services.scanQRCode();
+  }
+}
+
+class ImageRepository implements ImageRepositoryInterface {
+  final DatabaseService _db;
+
+  ImageRepository(this._db);
+
+  @override
+  Future<File> getImage(
+      {required bool isSourceCamera, required bool isCropStyleCircle}) async {
+    File imageFile = await _db.getImage(
+        isSourceCamera: isSourceCamera, isCropStyleCircle: isCropStyleCircle);
+    return imageFile;
+  }
+
+  @override
+  Future<void> uploadImage(
+      {required File image,
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData,
+      required VoidCallback retryOnError}) {
+    Future<void> data =
+        _db.uploadImage(image, uid, path, imageStorageUploadData, retryOnError);
+    return data;
+  }
+
+  @override
+  Future<UploadTask> uploadCategoryImage(
+      {required File image,
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData}) {
+    Future<UploadTask> uploadTask =
+        _db.uploadCategoryImage(image, uid, path, imageStorageUploadData);
+    return uploadTask;
+  }
+
+  @override
+  Future<UploadTask> uploadItemImage(
+      {required File image,
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData}) {
+    Future<UploadTask> uploadTask =
+        _db.uploadItemImage(image, uid, path, imageStorageUploadData);
+    return uploadTask;
+  }
 }
