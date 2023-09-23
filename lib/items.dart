@@ -41,9 +41,8 @@ class ItemGrid extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     Item data = list[index];
                     return ItemCard(
-                        itemName: data.itemName!,
-                        sku: data.sku!,
-                        imageURL: data.imageURL!);
+                      item: data,
+                    );
                   },
                   itemCount: list.length,
                 );

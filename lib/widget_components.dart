@@ -319,7 +319,7 @@ class _IncomingInventoryFilterChipsState
   }
 }
 
-class CurrentInventoryFilterChips extends StatefulWidget {
+class CurrentInventoryFilterChips extends ConsumerStatefulWidget {
   const CurrentInventoryFilterChips({super.key});
 
   @override
@@ -328,30 +328,31 @@ class CurrentInventoryFilterChips extends StatefulWidget {
 }
 
 class _CurrentInventoryFilterChipsState
-    extends State<CurrentInventoryFilterChips> {
-  List<String> filters = ["All", "In Stock", "For Reorder", "Out of Stock"];
-  String selectedFilter = "All"; // Default selected filter
+    extends ConsumerState<CurrentInventoryFilterChips> {
+  List<CurrentInventoryFilter> currentInventoryFilterList =
+      CurrentInventoryFilter.values;
+  late CurrentInventoryFilter selectedFilter;
 
-  void _onFilterSelected(String filter) {
-    setState(() {
-      selectedFilter = filter;
-    });
-
-    // You can implement filtering logic here based on the selected filter.
-    // For now, let's print the selected filter.
-    print("Selected Filter: $selectedFilter");
+  @override
+  void initState() {
+    super.initState();
+    selectedFilter = ref.read(currentInventoryFilterSelectionProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8.0, // Adjust the spacing between filter chips
-      children: filters.map((filter) {
+      children: currentInventoryFilterList.map((filter) {
         return FilterChip(
-          label: Text(filter),
+          label: Text(filter.label),
           selected: selectedFilter == filter,
           onSelected: (isSelected) {
-            _onFilterSelected(filter);
+            setState(() {
+              selectedFilter = filter;
+            });
+            ref.read(currentInventoryFilterSelectionProvider.notifier).state =
+                filter;
           },
         );
       }).toList(),
@@ -365,12 +366,14 @@ class CurrentInventoryItemCard extends StatelessWidget {
       required this.itemName,
       required this.sku,
       required this.stockLevel,
-      required this.stockLevelState});
+      required this.stockLevelState,
+      required this.unit});
 
   final String itemName;
   final String sku;
   final double stockLevel;
   final StockLevelState stockLevelState;
+  final String unit;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +407,9 @@ class CurrentInventoryItemCard extends StatelessWidget {
               ),
             ),
             StockLevelNotification(
-                stockLevel: stockLevel, stockLevelState: stockLevelState)
+                stockLevel: stockLevel,
+                stockLevelState: stockLevelState,
+                unit: unit)
           ],
         ),
       ),
@@ -414,29 +419,39 @@ class CurrentInventoryItemCard extends StatelessWidget {
 
 class StockLevelNotification extends StatelessWidget {
   const StockLevelNotification(
-      {super.key, required this.stockLevel, required this.stockLevelState});
+      {super.key,
+      required this.stockLevel,
+      required this.stockLevelState,
+      required this.unit});
 
   final double stockLevel;
   final StockLevelState stockLevelState;
+  final String unit;
 
   @override
   Widget build(BuildContext context) {
     Color? color;
     Color? textColor;
 
+    var pluralizedUnit =
+        pluralizationController.pluralize(noun: unit, count: stockLevel);
+
     switch (stockLevelState) {
       case StockLevelState.inStock:
         color = lightColorScheme.tertiaryContainer;
         textColor = lightColorScheme.onTertiaryContainer;
         break;
-      case StockLevelState.lowStock:
+      case StockLevelState.reorder:
         color = lightCustomColors.mikadoyellowContainer;
         textColor = lightCustomColors.onMikadoyellowContainer;
         break;
-      case StockLevelState.outOfStock:
+      case StockLevelState.lowStock:
         color = lightCustomColors.redalertContainer;
         textColor = lightCustomColors.onRedalertContainer;
         break;
+      case StockLevelState.outOfStock:
+        color = darkCustomColors.redalertContainer;
+        textColor = darkCustomColors.onRedalertContainer;
     }
     return Container(
       color: color,
@@ -451,7 +466,7 @@ class StockLevelNotification extends StatelessWidget {
               style: customTextStyle.labelMedium.copyWith(color: textColor),
             ),
             Text(
-              stockLevel.toString(),
+              '${stockLevel.toString()} $pluralizedUnit',
               style: customTextStyle.labelMedium.copyWith(color: textColor),
             )
           ],
@@ -2638,52 +2653,56 @@ class _ProductFilterChipsState extends State<ProductFilterChips> {
 }
 
 class ItemCard extends StatelessWidget {
-  const ItemCard(
-      {super.key,
-      required this.itemName,
-      required this.sku,
-      required this.imageURL});
+  final Item item;
 
-  final String itemName;
-  final String sku;
-  final String imageURL;
+  const ItemCard({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      borderOnForeground: true,
-      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(4.0),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Flexible(
-                child: ItemCardImage(
-              imageURL: imageURL,
-            )),
+            ItemCardImage(
+              imageURL: item.imageURL!,
+            ),
             const Padding(padding: EdgeInsets.only(left: 8.0)),
             Expanded(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    itemName,
-                    style: customTextStyle.titleMedium
-                        .copyWith(color: lightColorScheme.onSurface),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          item.itemName!,
+                          style: customTextStyle.titleMedium
+                              .copyWith(color: lightColorScheme.onSurface),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    sku,
-                    style: customTextStyle.bodyMedium
-                        .copyWith(color: lightColorScheme.onSurface),
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          item.sku!,
+                          style: customTextStyle.bodyMedium
+                              .copyWith(color: lightColorScheme.onSurface),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            )
+            ),
+            ItemMoreMenuButton(item: item)
           ],
         ),
       ),
@@ -2701,7 +2720,7 @@ class ItemCardImage extends StatelessWidget {
     return LayoutBuilder(builder: (context, constraints) {
       return Container(
         decoration: const BoxDecoration(
-            borderRadius: BorderRadius.all(Radius.circular(8.0))),
+            borderRadius: BorderRadius.all(Radius.circular(4.0))),
         height: constraints.maxHeight,
         width: constraints.maxHeight,
         clipBehavior: Clip.antiAlias,
@@ -2953,5 +2972,216 @@ class SupplierMoreMenuButton extends ConsumerWidget {
                   icon: const Icon(Icons.more_horiz_outlined));
             },
           );
+  }
+}
+
+class ItemMoreMenuButton extends ConsumerWidget {
+  const ItemMoreMenuButton({super.key, required this.item});
+
+  final Item item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var user = ref.watch(userProvider);
+
+    return user == null
+        ? const SizedBox(
+            height: 0.0,
+            width: 0.0,
+          )
+        : MenuAnchor(
+            menuChildren: [
+              MenuItemButton(
+                  onPressed: () =>
+                      navigationController.navigateToEditItem(item: item),
+                  child: const Text('Edit')),
+              MenuItemButton(onPressed: () {}, child: const Text('Delete'))
+            ],
+            builder: (context, controller, child) {
+              return IconButton(
+                  onPressed: () {
+                    if (controller.isOpen) {
+                      controller.close();
+                    } else {
+                      controller.open();
+                    }
+                  },
+                  icon: const Icon(Icons.more_horiz_outlined));
+            },
+          );
+  }
+}
+
+class LocationDropDownMenu extends ConsumerStatefulWidget {
+  const LocationDropDownMenu({super.key});
+
+  @override
+  _LocationDropDownMenu createState() => _LocationDropDownMenu();
+}
+
+class _LocationDropDownMenu extends ConsumerState<LocationDropDownMenu> {
+  StockLocation? selectedStockLocation;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var asyncLocationList = ref.watch(streamLocationDataListProvider);
+
+    return asyncLocationList.when(
+        data: (data) {
+          var locationList = data;
+          final List<DropdownMenuEntry<StockLocation>> stockLocationEntries =
+              <DropdownMenuEntry<StockLocation>>[];
+          for (final StockLocation stockLocation in locationList) {
+            stockLocationEntries.add(
+              DropdownMenuEntry<StockLocation>(
+                  value: stockLocation, label: stockLocation.locationAddress),
+            );
+          }
+          return DropdownMenu<StockLocation>(
+            enableFilter: true,
+            enableSearch: true,
+            label: const Text('Stock Location (Required)'),
+            dropdownMenuEntries: stockLocationEntries,
+            onSelected: (StockLocation? stockLocation) {
+              setState(() {
+                selectedStockLocation = stockLocation;
+              });
+              ref
+                  .read(locationSelectionProvider.notifier)
+                  .setLocation(stockLocation!);
+            },
+          );
+        },
+        error: (e, st) => const SizedBox(
+              height: 0.0,
+              width: 0.0,
+            ),
+        loading: () => const SizedBox(
+              height: 0.0,
+              width: 0.0,
+            ));
+  }
+}
+
+class PerishabilityDropDownMenu extends ConsumerStatefulWidget {
+  const PerishabilityDropDownMenu({super.key});
+
+  @override
+  _PerishabilityDropDownMenu createState() => _PerishabilityDropDownMenu();
+}
+
+class _PerishabilityDropDownMenu
+    extends ConsumerState<PerishabilityDropDownMenu> {
+  Perishability? selectedPerishability;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<DropdownMenuEntry<Perishability>> perishabilityEntries =
+        <DropdownMenuEntry<Perishability>>[];
+    for (final Perishability perishability in Perishability.values) {
+      perishabilityEntries.add(
+        DropdownMenuEntry<Perishability>(
+            value: perishability, label: perishability.label),
+      );
+    }
+
+    return DropdownMenu<Perishability>(
+      initialSelection: ref.read(perishabilityProvider),
+      enableFilter: false,
+      enableSearch: false,
+      label: const Text('Perishability (Required)'),
+      dropdownMenuEntries: perishabilityEntries,
+      onSelected: (Perishability? perishability) {
+        setState(() {
+          selectedPerishability = perishability;
+        });
+        ref.read(perishabilityProvider.notifier).state = perishability!;
+      },
+    );
+  }
+}
+
+class SupplierDropDownMenu extends ConsumerStatefulWidget {
+  const SupplierDropDownMenu({super.key});
+
+  @override
+  _SupplierDropDownMenuState createState() => _SupplierDropDownMenuState();
+}
+
+class _SupplierDropDownMenuState extends ConsumerState<SupplierDropDownMenu> {
+  Supplier? selectedSupplier;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var asyncSupplierList = ref.watch(streamSupplierListProvider);
+
+    return asyncSupplierList.when(
+        data: (data) {
+          var supplierList = data;
+          final List<DropdownMenuEntry<Supplier>> supplierEntries =
+              <DropdownMenuEntry<Supplier>>[];
+          for (final Supplier supplier in supplierList) {
+            supplierEntries.add(
+              DropdownMenuEntry<Supplier>(
+                  value: supplier, label: supplier.supplierName),
+            );
+          }
+          return DropdownMenu<Supplier>(
+            enableFilter: true,
+            enableSearch: true,
+            label: const Text('Supplier (Required)'),
+            dropdownMenuEntries: supplierEntries,
+            onSelected: (Supplier? supplier) {
+              setState(() {
+                selectedSupplier = supplier;
+              });
+              ref
+                  .read(supplierSelectionProvider.notifier)
+                  .setSupplier(supplier!);
+            },
+          );
+        },
+        error: (e, st) => const SizedBox(
+              height: 0.0,
+              width: 0.0,
+            ),
+        loading: () => const SizedBox(
+              height: 0.0,
+              width: 0.0,
+            ));
   }
 }

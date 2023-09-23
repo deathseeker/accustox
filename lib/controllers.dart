@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'database.dart';
+import 'enumerated_values.dart';
 import 'main.dart';
 import 'models.dart';
 import 'repository.dart';
@@ -195,6 +197,10 @@ class NavigationController {
   navigateToNewItem() {
     return _navigationRepository.navigateToNewItem();
   }
+
+  navigateToEditItem({required Item item}) {
+    return _navigationRepository.navigateToEditItem(item: item);
+  }
 }
 
 final DialogController dialogController = DialogController();
@@ -383,8 +389,13 @@ class ItemController {
     return _itemRepository.getItemID();
   }
 
-  Future<void> addItem({required String uid, required Item item}) {
-    return _itemRepository.addItem(uid: uid, item: item);
+  Future<void> addItem(
+      {required String uid,
+      required Item item,
+      required Stock stock,
+      required Inventory inventory}) {
+    return _itemRepository.addItem(
+        uid: uid, item: item, stock: stock, inventory: inventory);
   }
 
   Stream<List<Item>> getFilteredItemsStreamByCategory(
@@ -421,14 +432,62 @@ class ItemController {
       required String uid,
       required ImageStorageUploadData imageStorageUploadData,
       required Item item,
-      required WidgetRef ref}) {
+      required WidgetRef ref,
+      required String openingStock,
+      required String costPrice,
+      required String salePrice,
+      required String expirationWarning,
+      required String averageDailyDemand,
+      required String maximumDailyDemand,
+      required String averageLeadTime,
+      required String maximumLeadTime,
+      required Supplier? supplier,
+      required StockLocation? stockLocation,
+      required DateTime expirationDate,
+      required String batchNumber,
+      required DateTime purchaseDate}) {
     return _itemRepository.reviewAndSubmitItem(
         formKey: formKey,
         imageFile: imageFile,
         uid: uid,
         imageStorageUploadData: imageStorageUploadData,
         item: item,
-        ref: ref);
+        ref: ref,
+        openingStock: openingStock,
+        costPrice: costPrice,
+        salePrice: salePrice,
+        expirationWarning: expirationWarning,
+        averageDailyDemand: averageDailyDemand,
+        maximumDailyDemand: maximumDailyDemand,
+        averageLeadTime: averageLeadTime,
+        maximumLeadTime: maximumLeadTime,
+        supplier: supplier,
+        stockLocation: stockLocation,
+        expirationDate: expirationDate,
+        batchNumber: batchNumber,
+        purchaseDate: purchaseDate);
+  }
+
+  reviewAndSubmitItemUpdate(
+      {required GlobalKey<FormState> formKey,
+      required WidgetRef ref,
+      required ItemChangeNotifier itemChangeNotifier,
+      required Item oldItem,
+      required ImageFile imageFile,
+      required uid,
+      required ImageStorageUploadData imageStorageUploadData}) {
+    return _itemRepository.reviewAndSubmitItemUpdate(
+        formKey: formKey,
+        ref: ref,
+        itemChangeNotifier: itemChangeNotifier,
+        oldItem: oldItem,
+        imageFile: imageFile,
+        uid: uid,
+        imageStorageUploadData: imageStorageUploadData);
+  }
+
+  Stream<List<Item>> streamCurrentItemList({required String uid}) {
+    return _itemRepository.streamCurrentItemList(uid: uid);
   }
 }
 
@@ -471,6 +530,10 @@ class StockLocationController {
       required StockLocation subLocation}) {
     return _stockLocationRepository.addSubLocation(
         uid: uid, parentLocation: parentLocation, subLocation: subLocation);
+  }
+
+  Stream<List<StockLocation>> streamLocationDataList({required String uid}) {
+    return _stockLocationRepository.streamLocationDataList(uid: uid);
   }
 }
 
@@ -644,5 +707,83 @@ class ImageDataController {
         uid: uid,
         path: path,
         imageStorageUploadData: imageStorageUploadData);
+  }
+}
+
+final InventoryController inventoryController = InventoryController();
+
+class InventoryController {
+  final InventoryRepository _inventoryRepository =
+      InventoryRepository(DatabaseService(), Services());
+
+  Stream<InventorySummary> streamInventorySummary(
+      {required String uid, required String itemID}) {
+    return _inventoryRepository.streamInventorySummary(
+        uid: uid, itemID: itemID);
+  }
+
+  getStockLevelState(
+      {required num stockLevel,
+      required num safetyStockLevel,
+      required num reorderPoint}) {
+    return _inventoryRepository.getStockLevelState(
+        stockLevel: stockLevel,
+        safetyStockLevel: safetyStockLevel,
+        reorderPoint: reorderPoint);
+  }
+
+  Stream<List<Inventory>> streamInventory({required String uid}) {
+    return _inventoryRepository.streamInventory(uid: uid);
+  }
+}
+
+final DateTimeController dateTimeController = DateTimeController();
+
+class DateTimeController {
+  final DateTimeRepository _dateTimeRepository = DateTimeRepository(Services());
+
+  DateTime timestampToDateTime({required Timestamp timestamp}) {
+    return _dateTimeRepository.timestampToDateTime(timestamp: timestamp);
+  }
+
+  Timestamp dateTimeToTimestamp({required DateTime dateTime}) {
+    return _dateTimeRepository.dateTimeToTimestamp(dateTime: dateTime);
+  }
+
+  Future<DateTime?> selectDate(
+      {required BuildContext context,
+      required DateTime initialDate,
+      required DateTime firstDate,
+      required DateTime lastDate}) {
+    return _dateTimeRepository.selectDate(
+        context: context,
+        initialDate: initialDate,
+        firstDate: firstDate,
+        lastDate: lastDate);
+  }
+}
+
+final PerishabilityController perishabilityController =
+    PerishabilityController();
+
+class PerishabilityController {
+  final PerishabilityRepository _perishabilityRepository =
+      PerishabilityRepository(Services());
+
+  bool enableExpirationDateInput({required Perishability perishability}) {
+    return _perishabilityRepository.enableExpirationDateInput(
+        perishability: perishability);
+  }
+}
+
+final PluralizationController pluralizationController =
+    PluralizationController();
+
+class PluralizationController {
+  final PluralizationRepository _pluralizationRepository =
+      PluralizationRepository(Services());
+
+  String pluralize({required String noun, required num count}) {
+    return _pluralizationRepository.pluralize(noun: noun, count: count);
   }
 }

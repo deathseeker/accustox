@@ -402,7 +402,8 @@ class DatabaseService {
     return categories;
   }
 
-  Future<void> addItem(String uid, Item item) async {
+  Future<void> addItem(
+      String uid, Item item, Stock stock, Inventory inventory) async {
     DocumentReference documentReference = _firestore
         .collection('Users')
         .doc(uid)
@@ -415,12 +416,17 @@ class DatabaseService {
         .collection('Inventory')
         .doc(item.itemID);
 
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(stock.stockID);
+
     await _firestore.runTransaction((transaction) async {
       transaction.update(documentReference, {
         'itemList': FieldValue.arrayUnion([item.toFirestore()])
       });
 
-      transaction.set(inventoryReference, item.toFirestore());
+      transaction.set(inventoryReference, inventory.toFirestore());
+
+      transaction.set(stockReference, stock.toFirestore());
     });
   }
 
@@ -730,5 +736,50 @@ class DatabaseService {
           )
         ]);
     return croppedFile!;
+  }
+
+  Stream<List<Item>> streamCurrentItemList(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Item.fromFirestore(doc)).toList());
+  }
+
+  Stream<InventorySummary> streamInventorySummary(String uid, String itemID) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID)
+        .collection('Data')
+        .doc('InventorySummary')
+        .snapshots()
+        .map((doc) => InventorySummary.fromFirestore(doc));
+  }
+
+  Stream<List<Inventory>> streamInventory(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Inventory.fromFirestore(doc)).toList());
+  }
+
+  Stream<List<StockLocation>> streamLocationDataList(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('InventoryData')
+        .doc('Locations')
+        .snapshots()
+        .map((doc) => StockLocationDocument.fromFirestore(doc))
+        .map((stockLocationDocument) => stockLocationDocument.stockLocationList!
+            .map((e) => StockLocation.fromMap(e))
+            .toList());
   }
 }

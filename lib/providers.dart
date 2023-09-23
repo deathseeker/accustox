@@ -38,6 +38,11 @@ final asyncCategoryFilterListProvider = AsyncNotifierProvider<
   return AsyncCategoryFilterListNotifier();
 });
 
+final asyncCurrentInventoryDataListProvider = AutoDisposeAsyncNotifierProvider<
+    AsyncCurrentInventoryDataListNotifier, List<CurrentInventoryData>>(() {
+  return AsyncCurrentInventoryDataListNotifier();
+});
+
 final categoryIDProvider = StateNotifierProvider<CategoryIDNotifier, String?>(
   (ref) => CategoryIDNotifier(),
 );
@@ -68,6 +73,11 @@ StreamProvider<List<Category>> streamCategoryListProvider =
   return categoryController.streamCategoryDataList(uid: uid);
 });
 
+final streamLocationDataListProvider = StreamProvider.autoDispose((ref) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return stockLocationController.streamLocationDataList(uid: uid);
+});
 final inventoryLocationTypeProvider = StateProvider<InventoryLocationType>(
   (ref) => InventoryLocationType.warehouse,
 );
@@ -102,6 +112,25 @@ StreamProvider<List<Customer>> streamCustomerListProvider =
   return customerController.streamCustomerDataList(uid: uid);
 });
 
+final streamCurrentItemListProvider = StreamProvider.autoDispose((ref) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return itemController.streamCurrentItemList(uid: uid);
+});
+
+final streamInventoryProvider = StreamProvider.autoDispose((ref) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return inventoryController.streamInventory(uid: uid);
+});
+
+final streamInventorySummaryProvider =
+    StreamProvider.autoDispose.family<InventorySummary, String>((ref, itemID) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return inventoryController.streamInventorySummary(uid: uid, itemID: itemID);
+});
+
 final asyncCategorySelectionDataProvider = AsyncNotifierProvider<
     AsyncCategorySelectionDataNotifier, List<CategorySelectionData>>(() {
   return AsyncCategorySelectionDataNotifier();
@@ -114,3 +143,43 @@ final categorySelectionProvider =
     NotifierProvider<CategoriesNotifier, List<Category>>(() {
   return CategoriesNotifier();
 });
+
+final getSelectionListForItemCategoryProvider = FutureProvider.autoDispose
+    .family<List<CategorySelectionData>, List<Map<dynamic, dynamic>>>(
+        (ref, list) async {
+  var categoryList = ref.watch(asyncCategorySelectionDataProvider);
+  List<CategorySelectionData> categories = [];
+  categoryList.whenData((value) => categories = value);
+
+  void updateSelection(List<CategorySelectionData> listToUpdate,
+      List<Map<dynamic, dynamic>> categoryIDsToSelect) {
+    for (var category in listToUpdate) {
+      var isSelected = categoryIDsToSelect
+          .any((item) => item['categoryID'] == category.categoryID);
+      category.isSelected = isSelected;
+    }
+  }
+
+  List<Map<dynamic, dynamic>> categoryIDsToSelect = list;
+  updateSelection(categories, categoryIDsToSelect);
+
+  categories.sort((a, b) =>
+      a.categoryName!.toLowerCase().compareTo(b.categoryName!.toLowerCase()));
+
+  return categories;
+});
+
+final locationSelectionProvider = StateNotifierProvider.autoDispose<
+    StockLocationSelectionNotifier,
+    StockLocation?>((ref) => StockLocationSelectionNotifier(null));
+
+final perishabilityProvider = StateProvider<Perishability>(
+  (ref) => Perishability.nonPerishableGoods,
+);
+
+final currentInventoryFilterSelectionProvider =
+    StateProvider<CurrentInventoryFilter>((ref) => CurrentInventoryFilter.all);
+
+final supplierSelectionProvider =
+    StateNotifierProvider.autoDispose<SupplierSelectionNotifier, Supplier?>(
+        (ref) => SupplierSelectionNotifier(null));

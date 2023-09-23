@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'enumerated_values.dart';
 import 'models.dart';
 
 abstract class RoutingInterface {
@@ -86,6 +88,8 @@ abstract class NavigationRepositoryInterface {
   navigateToNewCustomerAccount();
 
   navigateToNewItem();
+
+  navigateToEditItem({required Item item});
 }
 
 abstract class DialogInterface {
@@ -184,7 +188,11 @@ abstract class CategoryInterface {
 abstract class ItemInterface {
   String getItemID();
 
-  Future<void> addItem({required String uid, required Item item});
+  Future<void> addItem(
+      {required String uid,
+      required Item item,
+      required Stock stock,
+      required Inventory inventory});
 
   Stream<List<Item>> getFilteredItemsStreamByCategory(
       {required String uid, required String categoryID});
@@ -200,12 +208,38 @@ abstract class ItemInterface {
       {required String uid, required Item oldItem, required Item newItem});
 
   reviewAndSubmitItem(
-      {required GlobalKey<FormState> formKey,
+      {
+        required GlobalKey<FormState> formKey,
         required ImageFile imageFile,
         required String uid,
         required ImageStorageUploadData imageStorageUploadData,
         required Item item,
-        required WidgetRef ref});
+        required WidgetRef ref,
+        required String openingStock,
+        required String costPrice,
+        required String salePrice,
+        required String expirationWarning,
+        required String averageDailyDemand,
+        required String maximumDailyDemand,
+        required String averageLeadTime,
+        required String maximumLeadTime,
+        required Supplier? supplier,
+        required StockLocation? stockLocation,
+        required DateTime expirationDate,
+        required String batchNumber,
+        required DateTime purchaseDate,
+      });
+
+  reviewAndSubmitItemUpdate(
+      {required GlobalKey<FormState> formKey,
+      required WidgetRef ref,
+      required ItemChangeNotifier itemChangeNotifier,
+      required Item oldItem,
+      required ImageFile imageFile,
+      required uid,
+      required ImageStorageUploadData imageStorageUploadData});
+
+  Stream<List<Item>> streamCurrentItemList({required String uid});
 }
 
 abstract class StockLocationInterface {
@@ -226,6 +260,8 @@ abstract class StockLocationInterface {
       {required String uid,
       required StockLocation parentLocation,
       required StockLocation subLocation});
+
+  Stream<List<StockLocation>> streamLocationDataList({required String uid});
 }
 
 abstract class SupplierInterface {
@@ -258,13 +294,12 @@ abstract class SupplierInterface {
 
   reviewAndSubmitSupplierUpdate(
       {required GlobalKey<FormState> formKey,
-        required String uid,
-        required Supplier originalSupplier,
-        required SupplierChangeNotifier notifier});
+      required String uid,
+      required Supplier originalSupplier,
+      required SupplierChangeNotifier notifier});
 }
 
 abstract class CustomerInterface {
-
   Stream<List<Customer>> streamCustomerDataList({required String uid});
 
   String getCustomerID();
@@ -273,17 +308,18 @@ abstract class CustomerInterface {
 
   reviewAndSubmitCustomerProfile(
       {required GlobalKey<FormState> formKey,
-        required String customerName,
-        required String contactPerson,
-        required String email,
-        required String contactNumber,
-        required String address,
-        required String customerType,
-        required String uid});
+      required String customerName,
+      required String contactPerson,
+      required String email,
+      required String contactNumber,
+      required String address,
+      required String customerType,
+      required String uid});
 }
 
 abstract class ScannerInterface {
   Future<String> scanBarcode();
+
   Future<String> scanQRCode();
 }
 
@@ -293,20 +329,52 @@ abstract class ImageRepositoryInterface {
 
   Future<void> uploadImage(
       {required File image,
-        required String uid,
-        required String path,
-        required ImageStorageUploadData imageStorageUploadData,
-        required VoidCallback retryOnError});
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData,
+      required VoidCallback retryOnError});
 
   Future<UploadTask> uploadCategoryImage(
       {required File image,
-        required String uid,
-        required String path,
-        required ImageStorageUploadData imageStorageUploadData});
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData});
 
   Future<UploadTask> uploadItemImage(
       {required File image,
-        required String uid,
-        required String path,
-        required ImageStorageUploadData imageStorageUploadData});
+      required String uid,
+      required String path,
+      required ImageStorageUploadData imageStorageUploadData});
+}
+
+abstract class InventoryInterface {
+  Stream<InventorySummary> streamInventorySummary(
+      {required String uid, required String itemID});
+
+  getStockLevelState(
+      {required num stockLevel,
+      required num safetyStockLevel,
+      required num reorderPoint});
+
+  Stream<List<Inventory>> streamInventory({required String uid});
+}
+
+abstract class DateTimeInterface {
+  DateTime timestampToDateTime({required Timestamp timestamp});
+
+  Timestamp dateTimeToTimestamp({required DateTime dateTime});
+
+  Future<DateTime?> selectDate(
+      {required BuildContext context,
+      required DateTime initialDate,
+      required DateTime firstDate,
+      required DateTime lastDate});
+}
+
+abstract class PerishabilityInterface {
+  bool enableExpirationDateInput({required Perishability perishability});
+}
+
+abstract class PluralizationInterface {
+  String pluralize({required String noun, required num count});
 }

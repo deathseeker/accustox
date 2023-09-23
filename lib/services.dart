@@ -1,6 +1,8 @@
+import 'package:accustox/edit_item.dart';
+import 'package:accustox/enumerated_values.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
-
 import 'edit_supplier.dart';
 import 'providers.dart';
 import 'widget_components.dart';
@@ -15,6 +17,7 @@ import 'database.dart';
 import 'login_splash.dart';
 import 'main.dart';
 import 'package:uuid/uuid.dart';
+import 'package:collection/collection.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 final DatabaseService _db = DatabaseService();
@@ -196,6 +199,11 @@ class Services {
   navigateToEditSupplier(Supplier supplier) {
     return navigatorKey.currentState?.push(MaterialPageRoute(
         builder: (context) => EditSupplier(supplier: supplier)));
+  }
+
+  navigateToEditItem(Item item) {
+    return navigatorKey.currentState
+        ?.push(MaterialPageRoute(builder: (context) => EditItem(item: item)));
   }
 
   navigateToNewCustomerAccount() {
@@ -745,7 +753,7 @@ class Services {
                                       description: descriptionController.text,
                                       type: type.label,
                                       parentLocationID:
-                                          parentLocation.parentLocationID,
+                                          parentLocation.locationID,
                                       locationAddress:
                                           '${locationNameController.text}, ${parentLocation.locationAddress}'));
                         },
@@ -944,26 +952,46 @@ class Services {
     return fileName;
   }
 
-  reviewAndSubmitItem(
-      {required GlobalKey<FormState> formKey,
-      required ImageFile imageFile,
-      required String uid,
-      required ImageStorageUploadData imageStorageUploadData,
-      required Item item,
-      required WidgetRef ref}) async {
-    final ImageDataController _imageDataController = ImageDataController();
+  reviewAndSubmitItem({
+    required GlobalKey<FormState> formKey,
+    required ImageFile imageFile,
+    required String uid,
+    required ImageStorageUploadData imageStorageUploadData,
+    required Item item,
+    required WidgetRef ref,
+    required String openingStock,
+    required String costPrice,
+    required String salePrice,
+    required String expirationWarning,
+    required String averageDailyDemand,
+    required String maximumDailyDemand,
+    required String averageLeadTime,
+    required String maximumLeadTime,
+    required Supplier? supplier,
+    required StockLocation? stockLocation,
+    required DateTime expirationDate,
+    required String batchNumber,
+    required DateTime purchaseDate,
+  }) async {
+    final ImageDataController imageDataController = ImageDataController();
 
     bool isValid = formKey.currentState!.validate();
     if (imageFile.file == null) {
       snackBarController
           .showSnackBarError("Please add the item image to continue");
+    } else if (stockLocation == null) {
+      snackBarController
+          .showSnackBarError("Please add the stock location to continue");
+    } else if (supplier == null) {
+      snackBarController
+          .showSnackBarError("Please add the supplier to continue");
     } else if (isValid == false) {
       snackBarController
           .showSnackBarError("Kindly review the item information");
     } else {
       snackBarController.showLoadingSnackBar(message: "Adding new item...");
 
-      var uploadTask = await _imageDataController.uploadItemImage(
+      var uploadTask = await imageDataController.uploadItemImage(
           image: imageFile.file!,
           uid: uid,
           path: 'Users/$uid/Images/Items',
@@ -998,8 +1026,56 @@ class Services {
             debugPrint(imageURL);
 
             item.update(imageURL: imageURL);
+            var stockID = itemController.getItemID();
+            var stockLevel = double.tryParse(openingStock);
 
-            itemController.addItem(uid: uid, item: item).whenComplete(() {
+            var costPriceDouble = double.tryParse(costPrice);
+            var salePriceDouble = double.tryParse(salePrice);
+            var expirationWarningDouble = double.tryParse(expirationWarning);
+            var beginningInventory = costPriceDouble! * stockLevel!;
+            var currentInventory = beginningInventory;
+            var averageDailyDemandDouble = double.tryParse(averageDailyDemand);
+            var maximumDailyDemandDouble = double.tryParse(maximumDailyDemand);
+            var averageLeadTimeDouble = double.tryParse(averageLeadTime);
+            var maximumLeadTimeDouble = double.tryParse(maximumLeadTime);
+            var safetyStockLevel =
+                (maximumLeadTimeDouble! * maximumDailyDemandDouble!) -
+                    (averageDailyDemandDouble! * averageLeadTimeDouble!);
+            var reorderPoint =
+                (averageLeadTimeDouble * averageDailyDemandDouble) +
+                    safetyStockLevel;
+
+            Stock stock = Stock(
+                item: item.toFirestore(),
+                supplier: supplier.toFirestore(),
+                stockLevel: stockLevel,
+                stockLocation: stockLocation.toFirestore(),
+                expirationDate: expirationDate,
+                batchNumber: batchNumber,
+                costPrice: costPriceDouble,
+                salePrice: salePriceDouble,
+                purchaseDate: purchaseDate,
+                inventoryCreatedOn: DateTime.now(),
+                expirationWarning: expirationWarningDouble,
+                stockID: stockID);
+
+            Inventory inventory = Inventory(
+                item: item.toFirestore(),
+                beginningInventory: beginningInventory,
+                maximumDailyDemand: maximumDailyDemandDouble,
+                maximumLeadTime: maximumLeadTimeDouble,
+                averageDailyDemand: averageDailyDemandDouble,
+                averageLeadTime: averageLeadTimeDouble,
+                currentInventory: currentInventory,
+                backOrder: 0,
+                stockLevel: stockLevel,
+                safetyStockLevel: safetyStockLevel,
+                reorderPoint: reorderPoint);
+
+            itemController
+                .addItem(
+                    uid: uid, item: item, stock: stock, inventory: inventory)
+                .whenComplete(() {
               snackBarController.hideCurrentSnackBar();
               snackBarController.showSnackBar("Item successfully added...");
 
@@ -1013,6 +1089,213 @@ class Services {
             break;
         }
       });
+    }
+  }
+
+  reviewAndSubmitItemUpdate(
+      {required GlobalKey<FormState> formKey,
+      required WidgetRef ref,
+      required ItemChangeNotifier itemChangeNotifier,
+      required Item oldItem,
+      required ImageFile imageFile,
+      required uid,
+      required ImageStorageUploadData imageStorageUploadData}) async {
+    bool isValid = formKey.currentState!.validate();
+    List<Map>? categoryTags =
+        ref.read(categorySelectionProvider).map((e) => e.toMap()).toList();
+    itemChangeNotifier.update(categoryTags: categoryTags);
+
+    if (isValid) {
+      if (imageFile.file != null) {
+        await processItemUpdateWithImageUpload(imageFile, uid,
+            imageStorageUploadData, itemChangeNotifier, oldItem, ref);
+      } else {
+        var hasItemChanged = checkIfItemChanged(oldItem, itemChangeNotifier);
+
+        hasItemChanged
+            ? await processItemUpdate(itemChangeNotifier, uid, oldItem, ref)
+            : snackBarController
+                .showSnackBarError("You have made no changes to the Item...");
+        // Process item data only
+        // code to process item data only
+      }
+    } else {
+      snackBarController.showSnackBar("Kindly review the item information");
+    }
+  }
+
+  processItemUpdateWithImageUpload(
+      ImageFile imageFile,
+      String uid,
+      ImageStorageUploadData imageStorageUploadData,
+      ItemChangeNotifier itemChangeNotifier,
+      Item oldItem,
+      WidgetRef ref) async {
+    final ImageDataController imageDataController = ImageDataController();
+
+    snackBarController.showLoadingSnackBar(message: "Updating item...");
+
+    var uploadTask = await imageDataController.uploadItemImage(
+        image: imageFile.file!,
+        uid: uid,
+        path: 'Users/$uid/Images/Item',
+        imageStorageUploadData: imageStorageUploadData);
+
+    uploadTask.snapshotEvents.listen((TaskSnapshot taskSnapshot) async {
+      switch (taskSnapshot.state) {
+        case TaskState.running:
+          final progress =
+              100.0 * (taskSnapshot.bytesTransferred / taskSnapshot.totalBytes);
+          snackBarController
+              .showSnackBar("Image upload is $progress% complete...");
+          break;
+        case TaskState.paused:
+          snackBarController.showSnackBar("Upload is paused...");
+          break;
+        case TaskState.canceled:
+          snackBarController.showSnackBar("Upload is canceled...");
+          break;
+        case TaskState.error:
+          snackBarController
+              .showSnackBarError("Something went wrong with the upload...");
+
+          break;
+        case TaskState.success:
+          String url = await taskSnapshot.ref.getDownloadURL();
+          imageStorageUploadData.newImageUrl = url;
+          debugPrint('UploadURL: ${imageStorageUploadData.imageUrl}');
+          snackBarController.showSnackBar("Upload is successful...");
+          var imageURL = imageStorageUploadData.imageUrl;
+          itemChangeNotifier.update(imageURL: imageURL);
+          debugPrint(imageURL);
+
+          Item newItem = Item();
+
+          newItem.copyFromChangeNotifier(itemChangeNotifier);
+
+          itemController
+              .updateItem(uid: uid, oldItem: oldItem, newItem: newItem)
+              .whenComplete(() {
+            snackBarController.showSnackBar("Item successfully updated...");
+
+            ref.read(asyncCategorySelectionDataProvider.notifier).resetState();
+            ref.read(categorySelectionProvider.notifier).resetState();
+
+            navigationController.navigateToPreviousPage();
+          });
+          break;
+      }
+    });
+  }
+
+  processItemUpdate(ItemChangeNotifier itemChangeNotifier, String uid,
+      Item oldItem, WidgetRef ref) async {
+    snackBarController.showSnackBar("Updating item...");
+
+    Item newItem = Item();
+
+    newItem.copyFromChangeNotifier(itemChangeNotifier);
+
+    itemController
+        .updateItem(uid: uid, oldItem: oldItem, newItem: newItem)
+        .whenComplete(() {
+      ref.read(asyncCategorySelectionDataProvider.notifier).resetState();
+      ref.read(categorySelectionProvider.notifier).resetState();
+      snackBarController.showSnackBar("Item successfully updated...");
+      navigationController.navigateToPreviousPage();
+    });
+  }
+
+  bool checkIfItemChanged(Item originalItem, ItemChangeNotifier notifier) {
+    if (notifier.itemName != originalItem.itemName ||
+        notifier.manufacturer != originalItem.manufacturer ||
+        notifier.manufacturerPartNumber !=
+            originalItem.manufacturerPartNumber ||
+        notifier.productType != originalItem.productType ||
+        notifier.unitOfMeasurement != originalItem.unitOfMeasurement ||
+        notifier.size != originalItem.size ||
+        notifier.brand != originalItem.brand ||
+        notifier.color != originalItem.color ||
+        notifier.sku != originalItem.sku ||
+        notifier.ean != originalItem.ean ||
+        notifier.length != originalItem.length ||
+        notifier.width != originalItem.width ||
+        notifier.height != originalItem.height ||
+        notifier.itemDescription != originalItem.itemDescription ||
+        notifier.imageURL != originalItem.imageURL) {
+      return true;
+    }
+
+    bool compareListMap(
+        List<Map<dynamic, dynamic>> list1, List<Map<dynamic, dynamic>> list2) {
+      var listEquality = const DeepCollectionEquality();
+
+      return listEquality.equals(list1, list2);
+    }
+
+    if (notifier.categoryTags?.length != originalItem.categoryTags?.length ||
+        !compareListMap(
+            notifier.categoryTags ?? [], originalItem.categoryTags ?? [])) {
+      debugPrint(
+          'categoryTags changed from ${originalItem.categoryTags} to ${notifier.categoryTags}');
+      debugPrint("Category tags changed");
+      return true;
+    }
+
+    return false;
+  }
+
+  getStockLevelState(num stockLevel, num safetyStockLevel, num reorderPoint) {
+    if (stockLevel > reorderPoint) {
+      return StockLevelState.inStock;
+    } else if (stockLevel <= reorderPoint && stockLevel > safetyStockLevel) {
+      return StockLevelState.reorder;
+    } else if (stockLevel <= safetyStockLevel && stockLevel > 0) {
+      return StockLevelState.lowStock;
+    } else {
+      return StockLevelState.outOfStock;
+    }
+  }
+
+  DateTime timestampToDateTime(Timestamp timestamp) {
+    return timestamp.toDate();
+  }
+
+  Timestamp dateTimeToTimestamp(DateTime dateTime) {
+    return Timestamp.fromDate(dateTime);
+  }
+
+  Future<DateTime?> selectDate(BuildContext context, DateTime initialDate,
+      DateTime firstDate, DateTime lastDate) {
+    return showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        firstDate: firstDate,
+        lastDate: lastDate);
+  }
+
+  bool enableExpirationDateInput(Perishability perishability) {
+    bool enable;
+    switch (perishability) {
+      case Perishability.durableGoods:
+        enable = false;
+        break;
+      case Perishability.nonPerishableGoods:
+        enable = true;
+        break;
+      case Perishability.perishableGoods:
+        enable = true;
+        break;
+    }
+    return enable;
+  }
+
+  String pluralize(String noun, num count) {
+    if (count == 1) {
+      return noun; // Singular form
+    } else {
+      // Basic pluralization rule: Add "s" to the noun
+      return "${noun}s"; // Plural form
     }
   }
 }

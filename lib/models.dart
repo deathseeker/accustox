@@ -281,6 +281,7 @@ class Supplier {
       'contactPerson': contactPerson,
       'email': email,
       'address': address,
+      'supplierID': supplierID
     };
   }
 
@@ -449,6 +450,61 @@ class SalespersonDocument {
   }
 }
 
+class Employee {
+  final String? employeeName;
+  final String? employeeID;
+  final String? employeePin;
+
+  Employee(
+      {required this.employeeName,
+      required this.employeeID,
+      required this.employeePin});
+
+  factory Employee.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> snapshot) {
+    final data = snapshot.data();
+
+    var employee = Employee(
+        employeeName: data?['employeeName'],
+        employeeID: data?['employeeID'],
+        employeePin: data?['employeePin']);
+
+    return employee;
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      if (employeeName != null) 'employeeName': employeeName!,
+      if (employeeID != null) 'employeeID': employeeID!,
+      if (employeePin != null) 'employeePin': employeePin!,
+    };
+  }
+
+  factory Employee.fromMap(Map? data) {
+    return Employee(
+      employeeName: data?['employeeName'] ?? '',
+      employeeID: data?['employeeID'] ?? '',
+      employeePin: data?['employeePin'] ?? '',
+    );
+  }
+}
+
+class EmployeeDocument {
+  List<Map>? employeeList;
+
+  EmployeeDocument({this.employeeList});
+
+  factory EmployeeDocument.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+
+    return EmployeeDocument(
+      employeeList: data['employeeList'] is Iterable
+          ? List.from(data['employeeList'])
+          : [],
+    );
+  }
+}
+
 class ItemCardData {
   final String itemName;
   final String sku;
@@ -503,6 +559,77 @@ class UserProfileChangeNotifier extends ChangeNotifier {
 
     // Notify listeners that the user profile has been updated
     notifyListeners();
+  }
+}
+
+class AsyncCurrentInventoryItemDataNotifier
+    extends AutoDisposeAsyncNotifier<List<CurrentInventoryItemData>> {
+  @override
+  FutureOr<List<CurrentInventoryItemData>> build() {
+    var data = ref.watch(streamCurrentItemListProvider);
+    List<CurrentInventoryItemData> list = [];
+
+    data.whenData((itemList) {
+      for (var item in itemList) {
+        var inventorySummaryData =
+            ref.watch(streamInventorySummaryProvider(item.itemID!));
+
+        var inventorySummary = inventorySummaryData.value!;
+
+        var stockLevelState = inventoryController.getStockLevelState(
+            stockLevel: inventorySummary.stockLevel!,
+            safetyStockLevel: inventorySummary.safetyStock!,
+            reorderPoint: inventorySummary.reorderPoint!);
+
+        list.add(CurrentInventoryItemData(item.itemName!, item.sku!,
+            inventorySummary.stockLevel!, stockLevelState));
+      }
+    });
+
+    return list;
+  }
+}
+
+class AsyncCurrentInventoryDataListNotifier
+    extends AutoDisposeAsyncNotifier<List<CurrentInventoryData>> {
+  @override
+  FutureOr<List<CurrentInventoryData>> build() {
+    var asyncCurrentInventoryList = ref.watch(streamInventoryProvider);
+    var currentInventoryFilter =
+        ref.watch(currentInventoryFilterSelectionProvider);
+    List<CurrentInventoryData> currentInventoryDataList = [];
+    List<CurrentInventoryData> finalList = [];
+
+    asyncCurrentInventoryList.whenData((inventoryList) {
+      for (var inventory in inventoryList) {
+        var stockLevelState = inventoryController.getStockLevelState(
+            stockLevel: inventory.stockLevel!,
+            safetyStockLevel: inventory.safetyStockLevel!,
+            reorderPoint: inventory.reorderPoint!);
+        currentInventoryDataList.add(CurrentInventoryData(
+            inventory: inventory, stockLevelState: stockLevelState));
+      }
+    });
+    currentInventoryFilter == CurrentInventoryFilter.all
+        ? finalList = currentInventoryDataList
+        : finalList = currentInventoryDataList
+            .where((currentInventoryData) =>
+                currentInventoryData.stockLevelState.label ==
+                currentInventoryFilter.label)
+            .toList();
+
+    finalList.sort((a, b) => a.inventory.item?['itemName']!
+        .toLowerCase()
+        .compareTo(b.inventory.item?['itemName']!.toLowerCase()));
+
+    return finalList;
+  }
+
+  Future<void> resetState() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      return build();
+    });
   }
 }
 
@@ -736,11 +863,9 @@ class ItemDocument {
 class Item with ChangeNotifier {
   String? itemName;
   String? manufacturer;
-  String? unit;
   String? sku;
   String? ean;
   String? brand;
-  String? country;
   String? productType;
   String? unitOfMeasurement;
   String? manufacturerPartNumber;
@@ -755,15 +880,14 @@ class Item with ChangeNotifier {
   String? length;
   String? width;
   String? height;
+  String? perishability;
 
   Item(
       {this.itemName,
       this.manufacturer,
-      this.unit,
       this.sku,
       this.ean,
       this.brand,
-      this.country,
       this.productType,
       this.unitOfMeasurement,
       this.manufacturerPartNumber,
@@ -777,7 +901,8 @@ class Item with ChangeNotifier {
       this.color,
       this.length,
       this.width,
-      this.height});
+      this.height,
+      this.perishability});
 
   factory Item.fromFirestore(DocumentSnapshot<Map<String, dynamic>> snapshot) {
     final data = snapshot.data();
@@ -785,11 +910,9 @@ class Item with ChangeNotifier {
     var item = Item(
         itemName: data?['itemName'],
         manufacturer: data?['manufacturer'],
-        unit: data?['unit'],
         sku: data?['sku'],
         ean: data?['ean'],
         brand: data?['brand'],
-        country: data?['country'],
         productType: data?['productType'],
         unitOfMeasurement: data?['unitOfMeasurement'],
         manufacturerPartNumber: data?['manufacturerPartNumber'],
@@ -800,12 +923,13 @@ class Item with ChangeNotifier {
             : [],
         itemID: data?['itemID'],
         uid: data?['uid'],
-        isItemAvailable: data?['isItemAvailable'],
+        isItemAvailable: data?['isItemAvailable'] ?? '',
         size: data?['size'],
         color: data?['color'],
         length: data?['length'],
         width: data?['width'],
-        height: data?['height']);
+        height: data?['height'],
+        perishability: data?['perishability']);
 
     return item;
   }
@@ -814,11 +938,9 @@ class Item with ChangeNotifier {
     return {
       'itemName': itemName,
       'manufacturer': manufacturer,
-      'unit': unit,
       'sku': sku,
       'ean': ean,
       'brand': brand,
-      'country': country,
       'productType': productType,
       'unitOfMeasurement': unitOfMeasurement,
       'manufacturerPartNumber': manufacturerPartNumber,
@@ -832,7 +954,8 @@ class Item with ChangeNotifier {
       'color': color,
       'length': length,
       'width': width,
-      'height': height
+      'height': height,
+      'perishability': perishability,
     };
   }
 
@@ -840,11 +963,9 @@ class Item with ChangeNotifier {
     return Item(
         itemName: data['itemName'] ?? '',
         manufacturer: data['manufacturer'] ?? '',
-        unit: data['unit'] ?? '',
         sku: data['sku'] ?? '',
         ean: data['ean'] ?? '',
         brand: data['brand'] ?? '',
-        country: data['country'] ?? '',
         productType: data['productType'] ?? '',
         unitOfMeasurement: data['unitOfMeasurement'] ?? '',
         manufacturerPartNumber: data['manufacturerPartNumber'] ?? '',
@@ -858,17 +979,16 @@ class Item with ChangeNotifier {
         color: data['color'] ?? '',
         length: data['length'] ?? '',
         width: data['width'] ?? '',
-        height: data['height'] ?? '');
+        height: data['height'] ?? '',
+        perishability: data['perishability'] ?? '');
   }
 
   Item.fromJson(Map<String, dynamic> json)
       : itemName = json['itemName'],
         manufacturer = json['manufacturer'],
-        unit = json['unit'],
         sku = json['sku'],
         ean = json['ean'],
         brand = json['brand'],
-        country = json['country'],
         productType = json['productType'],
         unitOfMeasurement = json['unitOfMeasurement'],
         manufacturerPartNumber = json['manufacturerPartNumber'],
@@ -883,11 +1003,9 @@ class Item with ChangeNotifier {
     return {
       'itemName': itemName,
       'manufacturer': manufacturer,
-      'unit': unit,
       'sku': sku,
       'ean': ean,
       'brand': brand,
-      'country': country,
       'productType': productType,
       'unitOfMeasurement': unitOfMeasurement,
       'manufacturerPartNumber': manufacturerPartNumber,
@@ -900,37 +1018,37 @@ class Item with ChangeNotifier {
     };
   }
 
-  Item copyWith(
-      {String? itemName,
-      String? manufacturer,
-      String? unit,
-      String? sku,
-      String? ean,
-      String? brand,
-      String? country,
-      String? productType,
-      String? unitOfMeasurement,
-      String? manufacturerPartNumber,
-      double? price,
-      String? itemDescription,
-      String? imageURL,
-      List<Map>? categoryTags,
-      String? itemID,
-      String? uid,
-      bool? isItemAvailable,
-      String? size,
-      String? color,
-      String? length,
-      String? width,
-      String? height}) {
+  Item copyWith({
+    String? itemName,
+    String? manufacturer,
+    String? unit,
+    String? sku,
+    String? ean,
+    String? brand,
+    String? country,
+    String? productType,
+    String? unitOfMeasurement,
+    String? manufacturerPartNumber,
+    double? price,
+    String? itemDescription,
+    String? imageURL,
+    List<Map>? categoryTags,
+    String? itemID,
+    String? uid,
+    bool? isItemAvailable,
+    String? size,
+    String? color,
+    String? length,
+    String? width,
+    String? height,
+    String? perishability,
+  }) {
     return Item(
         itemName: itemName ?? this.itemName,
         manufacturer: manufacturer ?? this.manufacturer,
-        unit: unit ?? this.unit,
         sku: sku ?? this.sku,
         ean: ean ?? this.ean,
         brand: brand ?? this.brand,
-        country: country ?? this.country,
         productType: productType ?? this.productType,
         unitOfMeasurement: unitOfMeasurement ?? this.unitOfMeasurement,
         manufacturerPartNumber:
@@ -945,17 +1063,16 @@ class Item with ChangeNotifier {
         color: color ?? this.color,
         length: length ?? this.length,
         width: width ?? this.width,
-        height: height ?? this.height);
+        height: height ?? this.height,
+        perishability: perishability ?? this.perishability);
   }
 
   void copyFromChangeNotifier(ItemChangeNotifier notifier) {
     itemName = notifier.itemName;
     manufacturer = notifier.manufacturer;
-    unit = notifier.unit;
     sku = notifier.sku;
     ean = notifier.ean;
     brand = notifier.brand;
-    country = notifier.country;
     productType = notifier.productType;
     unitOfMeasurement = notifier.unitOfMeasurement;
     manufacturerPartNumber = notifier.manufacturerPartNumber;
@@ -970,16 +1087,15 @@ class Item with ChangeNotifier {
     length = notifier.length;
     width = notifier.width;
     height = notifier.height;
+    perishability = notifier.perishability;
   }
 
   void update({
     String? itemName,
     String? manufacturer,
-    String? unit,
     String? sku,
     String? ean,
     String? brand,
-    String? country,
     String? productType,
     String? unitOfMeasurement,
     String? manufacturerPartNumber,
@@ -994,15 +1110,13 @@ class Item with ChangeNotifier {
     String? length,
     String? width,
     String? height,
+    String? perishability,
   }) {
     if (itemName != null) {
       this.itemName = itemName;
     }
     if (manufacturer != null) {
       this.manufacturer = manufacturer;
-    }
-    if (unit != null) {
-      this.unit = unit;
     }
     if (sku != null) {
       this.sku = sku;
@@ -1012,9 +1126,6 @@ class Item with ChangeNotifier {
     }
     if (brand != null) {
       this.brand = brand;
-    }
-    if (country != null) {
-      this.country = country;
     }
     if (productType != null) {
       this.productType = productType;
@@ -1058,21 +1169,20 @@ class Item with ChangeNotifier {
     if (height != null) {
       this.height = height;
     }
-
+    if (perishability != null) {
+      this.perishability = perishability;
+    }
     // Notify listeners that the item has been updated
     notifyListeners();
   }
-
 }
 
 class ItemChangeNotifier with ChangeNotifier {
   String? itemName;
   String? manufacturer;
-  String? unit;
   String? sku;
   String? ean;
   String? brand;
-  String? country;
   String? productType;
   String? unitOfMeasurement;
   String? manufacturerPartNumber;
@@ -1087,15 +1197,14 @@ class ItemChangeNotifier with ChangeNotifier {
   String? length;
   String? width;
   String? height;
+  String? perishability;
 
   ItemChangeNotifier(
       {this.itemName,
       this.manufacturer,
-      this.unit,
       this.sku,
       this.ean,
       this.brand,
-      this.country,
       this.productType,
       this.unitOfMeasurement,
       this.manufacturerPartNumber,
@@ -1109,7 +1218,8 @@ class ItemChangeNotifier with ChangeNotifier {
       this.color,
       this.length,
       this.width,
-      this.height});
+      this.height,
+      this.perishability});
 
   void update(
       {String? itemName,
@@ -1134,14 +1244,13 @@ class ItemChangeNotifier with ChangeNotifier {
       String? color,
       String? length,
       String? width,
-      String? height}) {
+      String? height,
+      String? perishability}) {
     this.itemName = itemName ?? this.itemName;
     this.manufacturer = manufacturer ?? this.manufacturer;
-    this.unit = unit ?? this.unit;
     this.sku = sku ?? this.sku;
     this.ean = ean ?? this.ean;
     this.brand = brand ?? this.brand;
-    this.country = country ?? this.country;
     this.productType = productType ?? this.productType;
     this.unitOfMeasurement = unitOfMeasurement ?? this.unitOfMeasurement;
     this.manufacturerPartNumber =
@@ -1157,17 +1266,16 @@ class ItemChangeNotifier with ChangeNotifier {
     this.length = length ?? this.length;
     this.width = width ?? this.width;
     this.height = height ?? this.height;
+    this.perishability = perishability ?? this.perishability;
     notifyListeners();
   }
 
   ItemChangeNotifier.fromItem(Item item) {
     itemName = item.itemName;
     manufacturer = item.manufacturer;
-    unit = item.unit;
     sku = item.sku;
     ean = item.ean;
     brand = item.brand;
-    country = item.country;
     productType = item.productType;
     unitOfMeasurement = item.unitOfMeasurement;
     manufacturerPartNumber = item.manufacturerPartNumber;
@@ -1182,6 +1290,7 @@ class ItemChangeNotifier with ChangeNotifier {
     length = item.length;
     width = item.width;
     height = item.height;
+    perishability = item.perishability;
   }
 }
 
@@ -1236,6 +1345,47 @@ class StockLocation {
       'parentLocationID': parentLocationID,
       'locationAddress': locationAddress,
     };
+  }
+
+  factory StockLocation.fromMap(Map? map) {
+    return StockLocation(
+      locationID: map?['locationID'] ?? '',
+      locationName: map?['locationName'] ?? '',
+      description: map?['description'] ?? '',
+      type: map?['type'] ?? '',
+      parentLocationID: map?['parentLocationID'] ?? '',
+      locationAddress: map?['locationAddress'] ?? '',
+      documentPath: map?['documentPath'] ?? '',
+    );
+  }
+
+  // Convert Location object to a map
+  Map<String, dynamic> toMap() {
+    return {
+      'locationID': locationID,
+      'locationName': locationName,
+      'description': description,
+      'type': type,
+      'parentLocationID': parentLocationID,
+      'locationAddress': locationAddress,
+      'documentPath': documentPath,
+    };
+  }
+}
+
+class StockLocationDocument {
+  List<Map>? stockLocationList;
+
+  StockLocationDocument({this.stockLocationList});
+
+  factory StockLocationDocument.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+
+    return StockLocationDocument(
+      stockLocationList: data['stockLocationList'] is Iterable
+          ? List.from(data['stockLocationList'])
+          : [],
+    );
   }
 }
 
@@ -1318,8 +1468,8 @@ class AsyncCategorySelectionDataNotifier
     String? uid = user.asData!.value.uid;
 
     var data = categoryController.getCategoryListWithSelection(uid: uid);
-    Future<List<CategorySelectionData>> _list = data;
-    return _list;
+    Future<List<CategorySelectionData>> list = data;
+    return list;
   }
 
   Future<void> resetState() async {
@@ -1379,4 +1529,554 @@ class CategoriesNotifier extends Notifier<List<Category>> {
       debugPrint('Error updating categories: $e');
     }
   }
+}
+
+class InventorySummary {
+  final double? inventoryValue;
+  final double? stockLevel;
+  final double? reservedStock;
+  final double? backOrderStock;
+  final double? safetyStock;
+  final double? leadTime;
+  final double? reorderPoint;
+  final String? itemID;
+
+  InventorySummary(
+      {required this.inventoryValue,
+      required this.stockLevel,
+      required this.reservedStock,
+      required this.backOrderStock,
+      required this.safetyStock,
+      required this.leadTime,
+      required this.reorderPoint,
+      required this.itemID});
+
+  // Create an instance of InventorySummary from Firestore document snapshot
+  factory InventorySummary.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return InventorySummary(
+        inventoryValue: data['inventoryValue'],
+        stockLevel: data['stockLevel'],
+        reservedStock: data['reservedStock'],
+        backOrderStock: data['backOrderStock'],
+        safetyStock: data['safetyStock'],
+        leadTime: data['leadTime'],
+        reorderPoint: data['reorderPoint'],
+        itemID: data['itemID']);
+  }
+
+  // Convert InventorySummary to a map that can be stored in Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'inventoryValue': inventoryValue,
+      'stockLevel': stockLevel,
+      'reservedStock': reservedStock,
+      'backOrderStock': backOrderStock,
+      'safetyStock': safetyStock,
+      'leadTime': leadTime,
+      'reorderPoint': reorderPoint,
+      'itemID': itemID,
+    };
+  }
+
+  // Convert InventorySummary to a map for general purposes (not Firestore-specific)
+  Map<String, dynamic> toMap() {
+    return {
+      'inventoryValue': inventoryValue,
+      'stockLevel': stockLevel,
+      'reservedStock': reservedStock,
+      'backOrderStock': backOrderStock,
+      'safetyStock': safetyStock,
+      'leadTime': leadTime,
+      'reorderPoint': reorderPoint,
+      'itemID': itemID
+    };
+  }
+
+  // Create an instance of InventorySummary from a map
+  factory InventorySummary.fromMap(Map? map) {
+    return InventorySummary(
+        inventoryValue: map?['inventoryValue'],
+        stockLevel: map?['stockLevel'],
+        reservedStock: map?['reservedStock'],
+        backOrderStock: map?['backOrderStock'],
+        safetyStock: map?['safetyStock'],
+        leadTime: map?['leadTime'],
+        reorderPoint: map?['reorderPoint'],
+        itemID: map?['itemID']);
+  }
+}
+
+class Inventory with ChangeNotifier {
+  Map? item;
+  final double? beginningInventory;
+  final double? maximumDailyDemand;
+  final double? maximumLeadTime;
+  final double? averageDailyDemand;
+  final double? averageLeadTime;
+  final double? currentInventory;
+  final double? backOrder;
+  final double? stockLevel;
+  final double? safetyStockLevel;
+  final double? reorderPoint;
+
+  Inventory({
+    required this.item,
+    required this.beginningInventory,
+    required this.maximumDailyDemand,
+    required this.maximumLeadTime,
+    required this.averageDailyDemand,
+    required this.averageLeadTime,
+    required this.currentInventory,
+    required this.backOrder,
+    required this.stockLevel,
+    required this.safetyStockLevel,
+    required this.reorderPoint,
+  });
+
+  factory Inventory.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Inventory(
+      item: data['item'],
+      beginningInventory: data['beginningInventory'],
+      maximumDailyDemand: data['maximumDailyDemand'],
+      maximumLeadTime: data['maximumLeadTime'],
+      averageDailyDemand: data['averageDailyDemand'],
+      averageLeadTime: data['averageLeadTime'],
+      currentInventory: data['currentInventory'],
+      backOrder: data['backOrder'],
+      stockLevel: data['stockLevel'],
+      safetyStockLevel: data['safetyStockLevel'],
+      reorderPoint: data['reorderPoint'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'item': item,
+      'beginningInventory': beginningInventory,
+      'maximumDailyDemand': maximumDailyDemand,
+      'maximumLeadTime': maximumLeadTime,
+      'averageDailyDemand': averageDailyDemand,
+      'averageLeadTime': averageLeadTime,
+      'currentInventory': currentInventory,
+      'backOrder': backOrder,
+      'stockLevel': stockLevel,
+      'safetyStockLevel': safetyStockLevel,
+      'reorderPoint': reorderPoint,
+    };
+  }
+
+  factory Inventory.fromMap(Map? map) {
+    return Inventory(
+      item: map?['item'],
+      beginningInventory: map?['beginningInventory'],
+      maximumDailyDemand: map?['maximumDailyDemand'],
+      maximumLeadTime: map?['maximumLeadTime'],
+      averageDailyDemand: map?['averageDailyDemand'],
+      averageLeadTime: map?['averageLeadTime'],
+      currentInventory: map?['currentInventory'],
+      backOrder: map?['backOrder'],
+      stockLevel: map?['stockLevel'],
+      safetyStockLevel: map?['safetyStockLevel'],
+      reorderPoint: map?['reorderPoint'],
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'item': item,
+      'beginningInventory': beginningInventory,
+      'maximumDailyDemand': maximumDailyDemand,
+      'maximumLeadTime': maximumLeadTime,
+      'averageDailyDemand': averageDailyDemand,
+      'averageLeadTime': averageLeadTime,
+      'currentInventory': currentInventory,
+      'backOrder': backOrder,
+      'stockLevel': stockLevel,
+      'safetyStockLevel': safetyStockLevel,
+      'reorderPoint': reorderPoint,
+    };
+  }
+
+  void update({Map? item}) {
+    if (item != null) {
+      this.item = item;
+    }
+
+    notifyListeners();
+  }
+}
+
+class Stock with ChangeNotifier {
+  Map? item;
+  final double? stockLevel;
+  final Map? stockLocation;
+  final DateTime? expirationDate;
+  final String? batchNumber;
+  final double? costPrice;
+  final double? salePrice;
+  final DateTime? purchaseDate;
+  final DateTime? inventoryCreatedOn;
+  final double? expirationWarning;
+  final Map? supplier;
+  final String? stockID;
+
+  Stock(
+      {required this.item,
+      required this.supplier,
+      required this.stockLevel,
+      required this.stockLocation,
+      required this.expirationDate,
+      required this.batchNumber,
+      required this.costPrice,
+      required this.salePrice,
+      required this.purchaseDate,
+      required this.inventoryCreatedOn,
+      required this.expirationWarning,
+      required this.stockID});
+
+  factory Stock.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Stock(
+        item: data['item'],
+        supplier: data['supplier'],
+        stockLevel: data['stockLevel'],
+        stockLocation: data['stockLocation'],
+        expirationDate: dateTimeController.timestampToDateTime(
+            timestamp: data['expirationDate']),
+        batchNumber: data['batchNumber'],
+        costPrice: data['costPrice'],
+        salePrice: data['salePrice'],
+        purchaseDate: dateTimeController.timestampToDateTime(
+            timestamp: data['purchaseDate']),
+        inventoryCreatedOn: dateTimeController.timestampToDateTime(
+            timestamp: data['inventoryCreatedOn']),
+        expirationWarning: data['expirationWarning'],
+        stockID: data['stockID']);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'item': item,
+      'supplier': supplier,
+      'stockLevel': stockLevel,
+      'stockLocation': stockLocation,
+      'expirationDate': expirationDate,
+      'batchNumber': batchNumber,
+      'costPrice': costPrice,
+      'salePrice': salePrice,
+      'purchaseDate': purchaseDate,
+      'inventoryCreatedOn': inventoryCreatedOn,
+      'expirationWarning': expirationWarning,
+    };
+  }
+
+  factory Stock.fromMap(Map<String, dynamic> map) {
+    return Stock(
+        item: map['item'],
+        supplier: map['supplier'],
+        stockLevel: map['stockLevel'],
+        stockLocation: map['stockLocation'],
+        expirationDate: map['expirationDate'],
+        batchNumber: map['batchNumber'],
+        costPrice: map['costPrice'],
+        salePrice: map['salePrice'],
+        purchaseDate: map['purchaseDate'],
+        inventoryCreatedOn: map['inventoryCreatedOn'],
+        expirationWarning: map['expirationWarning'],
+        stockID: map['stockID']);
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'item': item,
+      'supplier': supplier,
+      'stockLevel': stockLevel,
+      'stockLocation': stockLocation,
+      'expirationDate':
+          dateTimeController.dateTimeToTimestamp(dateTime: expirationDate!),
+      'batchNumber': batchNumber,
+      'costPrice': costPrice,
+      'salePrice': salePrice,
+      'purchaseDate':
+          dateTimeController.dateTimeToTimestamp(dateTime: purchaseDate!),
+      'inventoryCreatedOn':
+          dateTimeController.dateTimeToTimestamp(dateTime: inventoryCreatedOn!),
+      'expirationWarning': expirationWarning,
+    };
+  }
+
+  void update({Map? item}) {
+    if (item != null) {
+      this.item = item;
+    }
+
+    notifyListeners();
+  }
+}
+
+class ItemInventory {
+  final String? itemName;
+  final String? manufacturer;
+  final String? sku;
+  final String? ean;
+  final String? brand;
+  final String? productType;
+  final String? unitOfMeasurement;
+  final String? manufacturerPartNumber;
+  final String? itemDescription;
+  final String? imageURL;
+  final List<Map>? categoryTags;
+  final String? itemID;
+  final String? uid;
+  final bool? isItemAvailable;
+  final String? size;
+  final String? color;
+  final String? length;
+  final String? width;
+  final String? height;
+  final double? inventoryValue;
+  final double? stockLevel;
+  final double? reservedStock;
+  final double? backOrderStock;
+  final double? safetyStock;
+  final double? leadTime;
+  final double? reorderPoint;
+
+  ItemInventory({
+    this.itemName,
+    this.manufacturer,
+    this.sku,
+    this.ean,
+    this.brand,
+    this.productType,
+    this.unitOfMeasurement,
+    this.manufacturerPartNumber,
+    this.itemDescription,
+    this.imageURL,
+    this.categoryTags,
+    this.itemID,
+    this.uid,
+    this.isItemAvailable,
+    this.size,
+    this.color,
+    this.length,
+    this.width,
+    this.height,
+    this.inventoryValue,
+    this.stockLevel,
+    this.reservedStock,
+    this.backOrderStock,
+    this.safetyStock,
+    this.leadTime,
+    this.reorderPoint,
+  });
+
+  factory ItemInventory.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return ItemInventory(
+      itemName: data['itemName'],
+      manufacturer: data['manufacturer'],
+      sku: data['sku'],
+      ean: data['ean'],
+      brand: data['brand'],
+      productType: data['productType'],
+      unitOfMeasurement: data['unitOfMeasurement'],
+      manufacturerPartNumber: data['manufacturerPartNumber'],
+      itemDescription: data['itemDescription'],
+      imageURL: data['imageURL'],
+      categoryTags: data['categoryTags'] is Iterable
+          ? List<Map>.from(data['categoryTags'] ?? [])
+          : [],
+      itemID: data['itemID'],
+      uid: data['uid'],
+      isItemAvailable: data['isItemAvailable'],
+      size: data['size'],
+      color: data['color'],
+      length: data['length'],
+      width: data['width'],
+      height: data['height'],
+      inventoryValue: data['inventoryValue'],
+      stockLevel: data['stockLevel'],
+      reservedStock: data['reservedStock'],
+      backOrderStock: data['backOrderStock'],
+      safetyStock: data['safetyStock'],
+      leadTime: data['leadTime'],
+      reorderPoint: data['reorderPoint'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'itemName': itemName,
+      'manufacturer': manufacturer,
+      'sku': sku,
+      'ean': ean,
+      'brand': brand,
+      'productType': productType,
+      'unitOfMeasurement': unitOfMeasurement,
+      'manufacturerPartNumber': manufacturerPartNumber,
+      'itemDescription': itemDescription,
+      'imageURL': imageURL,
+      'categoryTags': categoryTags,
+      'itemID': itemID,
+      'uid': uid,
+      'isItemAvailable': isItemAvailable,
+      'size': size,
+      'color': color,
+      'length': length,
+      'width': width,
+      'height': height,
+      'inventoryValue': inventoryValue,
+      'stockLevel': stockLevel,
+      'reservedStock': reservedStock,
+      'backOrderStock': backOrderStock,
+      'safetyStock': safetyStock,
+      'leadTime': leadTime,
+      'reorderPoint': reorderPoint,
+    };
+  }
+
+  Map<String, dynamic> toFirestore() {
+    final Map<String, dynamic> data = {
+      'itemName': itemName,
+      'manufacturer': manufacturer,
+      'sku': sku,
+      'ean': ean,
+      'brand': brand,
+      'productType': productType,
+      'unitOfMeasurement': unitOfMeasurement,
+      'manufacturerPartNumber': manufacturerPartNumber,
+      'itemDescription': itemDescription,
+      'imageURL': imageURL,
+      'categoryTags': categoryTags,
+      'itemID': itemID,
+      'uid': uid,
+      'isItemAvailable': isItemAvailable,
+      'size': size,
+      'color': color,
+      'length': length,
+      'width': width,
+      'height': height,
+      'inventoryValue': inventoryValue,
+      'stockLevel': stockLevel,
+      'reservedStock': reservedStock,
+      'backOrderStock': backOrderStock,
+      'safetyStock': safetyStock,
+      'leadTime': leadTime,
+      'reorderPoint': reorderPoint,
+    };
+
+    return data;
+  }
+
+  // Method to convert a Map to an ItemInventory object
+  factory ItemInventory.fromMap(Map? data) {
+    return ItemInventory(
+      itemName: data?['itemName'],
+      manufacturer: data?['manufacturer'],
+      sku: data?['sku'],
+      ean: data?['ean'],
+      brand: data?['brand'],
+      productType: data?['productType'],
+      unitOfMeasurement: data?['unitOfMeasurement'],
+      manufacturerPartNumber: data?['manufacturerPartNumber'],
+      itemDescription: data?['itemDescription'],
+      imageURL: data?['imageURL'],
+      categoryTags: List<Map>.from(data?['categoryTags']),
+      itemID: data?['itemID'],
+      uid: data?['uid'],
+      isItemAvailable: data?['isItemAvailable'],
+      size: data?['size'],
+      color: data?['color'],
+      length: data?['length'],
+      width: data?['width'],
+      height: data?['height'],
+      inventoryValue: data?['inventoryValue'],
+      stockLevel: data?['stockLevel'],
+      reservedStock: data?['reservedStock'],
+      backOrderStock: data?['backOrderStock'],
+      safetyStock: data?['safetyStock'],
+      leadTime: data?['leadTime'],
+      reorderPoint: data?['reorderPoint'],
+    );
+  }
+}
+
+class DemandHistory {
+  final DateTime timestamp;
+  final double demand;
+  final String itemID;
+  final String transactionID;
+
+  DemandHistory(this.timestamp, this.demand, this.itemID, this.transactionID);
+}
+
+class LeadTimeHistory {
+  final DateTime timestamp;
+  final double leadTime;
+  final String itemID;
+
+  LeadTimeHistory(this.timestamp, this.leadTime, this.itemID);
+}
+
+class SalesOrder {
+  final Map? customer;
+  final DateTime transactionMadeOn;
+  final String paymentTerms;
+  final String transactionProcessedBy;
+  final List<Map?> itemOrders;
+  final double orderTotal;
+  final String salesOrderID;
+
+  SalesOrder(
+      {required this.customer,
+      required this.transactionMadeOn,
+      required this.paymentTerms,
+      required this.transactionProcessedBy,
+      required this.itemOrders,
+      required this.orderTotal,
+      required this.salesOrderID});
+}
+
+class ItemOrder {
+  final String itemId;
+  final String itemName;
+  final String sku;
+  final double quantity;
+  final double price;
+  final double subTotal;
+
+  ItemOrder(
+      {required this.itemId,
+      required this.itemName,
+      required this.sku,
+      required this.quantity,
+      required this.price,
+      required this.subTotal});
+}
+
+class StockLocationSelectionNotifier extends StateNotifier<StockLocation?> {
+  StockLocationSelectionNotifier(super.state);
+
+  void setLocation(StockLocation stockLocation) {
+    state = stockLocation;
+  }
+}
+
+class SupplierSelectionNotifier extends StateNotifier<Supplier?> {
+  SupplierSelectionNotifier(super.state);
+
+  void setSupplier(Supplier supplier) {
+    state = supplier;
+  }
+}
+
+class CurrentInventoryData {
+  final Inventory inventory;
+  final StockLevelState stockLevelState;
+
+  CurrentInventoryData(
+      {required this.inventory, required this.stockLevelState});
 }

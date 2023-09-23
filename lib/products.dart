@@ -18,12 +18,18 @@ class Products extends StatelessWidget {
             child: ProductFilterChips(filters: ['All']),
           ),
           ItemGrid(itemList: [
-            ItemCardData('Item Name Item Name Item Name Item Name Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
-            ItemCardData('Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
-            ItemCardData('Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
-            ItemCardData('Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
-            ItemCardData('Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
-            ItemCardData('Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
+            ItemCardData('Item Name Item Name Item Name Item Name Item Name',
+                'SAM-123-ABC-456', defaultMerchantImageUrl),
+            ItemCardData(
+                'Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
+            ItemCardData(
+                'Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
+            ItemCardData(
+                'Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
+            ItemCardData(
+                'Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
+            ItemCardData(
+                'Item Name', 'SAM-123-ABC-456', defaultMerchantImageUrl),
           ])
         ],
       ),
@@ -41,15 +47,12 @@ class ItemGrid extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 300,
-        mainAxisSpacing: 8.0,
-        crossAxisSpacing: 8.0,
-        childAspectRatio: 3
-      ),
+          maxCrossAxisExtent: 300,
+          mainAxisSpacing: 8.0,
+          crossAxisSpacing: 8.0,
+          childAspectRatio: 3),
       itemBuilder: (context, index) {
         ItemCardData data = itemList[index];
-        return ItemCard(
-            itemName: data.itemName, sku: data.sku, imageURL: data.imageURL);
       },
       itemCount: itemList.length,
     );

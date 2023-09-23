@@ -1,6 +1,7 @@
-import 'package:accustox/controllers.dart';
+import 'package:accustox/default_values.dart';
+import 'package:intl/intl.dart';
+import 'controllers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'image_container.dart';
 import 'models.dart';
@@ -56,6 +57,14 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
   final TextEditingController salePriceController = TextEditingController();
   final TextEditingController purchaseDateController = TextEditingController();
   final TextEditingController supplierController = TextEditingController();
+  final TextEditingController expirationWarningController =
+      TextEditingController();
+  final TextEditingController dailyDemandController = TextEditingController();
+  final TextEditingController leadTimeController = TextEditingController();
+  final TextEditingController maximumDailyDemandController =
+      TextEditingController();
+  final TextEditingController maximumLeadTimeController =
+      TextEditingController();
 
   final FocusNode itemNameFocusNode = FocusNode();
   final FocusNode manufacturerFocusNode = FocusNode();
@@ -79,13 +88,22 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
   final FocusNode salePriceFocusNode = FocusNode();
   final FocusNode purchaseDateFocusNode = FocusNode();
   final FocusNode supplierFocusNode = FocusNode();
+  final FocusNode expirationWarningFocusNode = FocusNode();
+  final FocusNode dailyDemandFocusNode = FocusNode();
+  final FocusNode leadTimeFocusNode = FocusNode();
+  final FocusNode maximumLeadTimeFocusNode = FocusNode();
+  final FocusNode maximumDailyDemandFocusNode = FocusNode();
+
+  late DateTime? selectedExpirationDate;
+  late DateTime? selectedPurchaseDate;
 
   ImageFile imageFile = ImageFile();
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+    selectedExpirationDate = defaultDateTime;
+    selectedPurchaseDate = defaultDateTime;
   }
 
   @override
@@ -105,6 +123,16 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
     lengthController.dispose();
     widthController.dispose();
     heightController.dispose();
+    openingStockController.dispose();
+    stockLocationController.dispose();
+    costPriceController.dispose();
+    salePriceController.dispose();
+    batchNumberController.dispose();
+    purchaseDateController.dispose();
+    expirationDateController.dispose();
+    expirationWarningController.dispose();
+    dailyDemandController.dispose();
+    leadTimeController.dispose();
     itemNameFocusNode.dispose();
     manufacturerPartNumberFocusNode.dispose();
     manufacturerFocusNode.dispose();
@@ -119,11 +147,27 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
     lengthFocusNode.dispose();
     widthFocusNode.dispose();
     heightFocusNode.dispose();
+    stockLocationFocusNode.dispose();
+    supplierFocusNode.dispose();
+    openingStockFocusNode.dispose();
+    costPriceFocusNode.dispose();
+    salePriceFocusNode.dispose();
+    batchNumberFocusNode.dispose();
+    purchaseDateFocusNode.dispose();
+    expirationDateFocusNode.dispose();
+    expirationWarningFocusNode.dispose();
+    dailyDemandFocusNode.dispose();
+    leadTimeFocusNode.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     var user = ref.watch(userProvider);
+    var perishabilitySelection = ref.watch(perishabilityProvider);
+    var enabled = perishabilityController.enableExpirationDateInput(
+        perishability: perishabilitySelection);
+    var supplier = ref.watch(supplierSelectionProvider);
+    var stockLocation = ref.watch(locationSelectionProvider);
 
     return WillPopScope(
       onWillPop: () async {
@@ -157,6 +201,14 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8.0),
                   child: GroupTitle(title: 'Item Information'),
+                ),
+                const Row(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: PerishabilityDropDownMenu(),
+                    )
+                  ],
                 ),
                 Row(
                   textBaseline: TextBaseline.alphabetic,
@@ -391,8 +443,6 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                           String barcodeData =
                               await scannerController.scanBarCode();
 
-
-
                           setState(() {
                             eanController.text = barcodeData;
                           });
@@ -501,6 +551,297 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                 ),
                 const _CategoryTags(),
                 const Divider(),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: GroupTitle(title: 'Opening Inventory Information'),
+                ),
+                const Row(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: LocationDropDownMenu(),
+                    ),
+                    Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: SupplierDropDownMenu(),
+                    ),
+                  ],
+                ),
+                Row(
+                  textBaseline: TextBaseline.alphabetic,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  children: [
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: openingStockController,
+                          focusNode: openingStockFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Opening Stock'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter your starting stock level';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16.0),
+                    ),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: costPriceController,
+                          focusNode: costPriceFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Cost Price (in Php)'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter your cost per product unit';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: salePriceController,
+                          focusNode: salePriceFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Sale Price (in Php)'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter your selling price per product unit';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: batchNumberController,
+                          focusNode: batchNumberFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Batch/Lot Number'),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  textBaseline: TextBaseline.alphabetic,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  children: [
+                    Flexible(
+                      flex: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: GestureDetector(
+                          onTap: () async {
+                            var selectedDate =
+                                await dateTimeController.selectDate(
+                                    context: context,
+                                    initialDate: DateTime.now(),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime(2101));
+                            setState(() {
+                              selectedPurchaseDate = selectedDate!;
+                              String formattedDate =
+                                  DateFormat.yMd().format(selectedDate);
+                              purchaseDateController.text = formattedDate;
+                            });
+                          },
+                          child: AbsorbPointer(
+                            child: TextField(
+                              controller: purchaseDateController,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Purchase Date',
+                                suffixIcon: Icon(Icons.calendar_today),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Flexible(
+                      flex: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: GestureDetector(
+                          onTap: enabled
+                              ? () async {
+                                  var selectedDate =
+                                      await dateTimeController.selectDate(
+                                          context: context,
+                                          initialDate: DateTime.now(),
+                                          firstDate: DateTime(2000),
+                                          lastDate: DateTime(2101));
+                                  setState(() {
+                                    selectedExpirationDate = selectedDate!;
+                                    String formattedDate =
+                                        DateFormat.yMd().format(selectedDate);
+                                    expirationDateController.text =
+                                        formattedDate;
+                                  });
+                                }
+                              : null,
+                          child: AbsorbPointer(
+                            child: TextFormField(
+                              enabled: perishabilityController
+                                  .enableExpirationDateInput(
+                                      perishability: perishabilitySelection),
+                              controller: expirationDateController,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Expiration Date',
+                                suffixIcon: Icon(Icons.calendar_today),
+                              ),
+                              validator: enabled
+                                  ? (value) {
+                                      if (value!.isEmpty) {
+                                        return 'Please enter the expiration date';
+                                      }
+                                      return null;
+                                    }
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          enabled: enabled,
+                          controller: expirationWarningController,
+                          focusNode: expirationWarningFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Expiration Warning (in Days)'),
+                          keyboardType: TextInputType.number,
+                          validator: enabled
+                              ? (value) {
+                                  if (value!.isEmpty) {
+                                    return 'Please enter how soon should you be warned about expiring stock';
+                                  }
+                                  return null;
+                                }
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  textBaseline: TextBaseline.alphabetic,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  children: [
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: dailyDemandController,
+                          focusNode: dailyDemandFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Daily Demand (Est.)'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter an estimate of the daily demand for this item';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: maximumDailyDemandController,
+                          focusNode: maximumDailyDemandFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Maximum Daily Demand (Est)'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter an estimate of the maximum daily demand for this item';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: leadTimeController,
+                          focusNode: leadTimeFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Average Lead Time (Est.)'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter the estimated average lead Time for this item';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: TextFormField(
+                          controller: maximumLeadTimeController,
+                          focusNode: maximumLeadTimeFocusNode,
+                          decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Maximum Lead Time (Est.)'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter the estimated maximum lead Time for this item';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 ButtonBar(
                   children: [
                     FilledButton(
@@ -512,6 +853,9 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                                     .read(categorySelectionProvider)
                                     .map((e) => e.toMap())
                                     .toList();
+
+                                var stockLevel = double.tryParse(
+                                    openingStockController.text);
 
                                 Item item = Item(
                                     itemName: itemNameController.text,
@@ -530,7 +874,12 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                                     width: widthController.text,
                                     height: heightController.text,
                                     itemID: itemID,
-                                    categoryTags: categoryTags);
+                                    categoryTags: categoryTags,
+                                    uid: user.uid,
+                                    isItemAvailable: true,
+                                    perishability:
+                                        perishabilitySelection.label);
+
                                 itemController.reviewAndSubmitItem(
                                     formKey: _formKey,
                                     imageFile: imageFile,
@@ -538,7 +887,24 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                                     imageStorageUploadData:
                                         imageStorageUploadData,
                                     item: item,
-                                    ref: ref);
+                                    ref: ref,
+                                    openingStock: openingStockController.text,
+                                    costPrice: costPriceController.text,
+                                    salePrice: salePriceController.text,
+                                    expirationWarning:
+                                        expirationWarningController.text,
+                                    averageDailyDemand:
+                                        dailyDemandController.text,
+                                    maximumDailyDemand:
+                                        maximumDailyDemandController.text,
+                                    averageLeadTime: leadTimeController.text,
+                                    maximumLeadTime:
+                                        maximumLeadTimeController.text,
+                                    supplier: supplier,
+                                    stockLocation: stockLocation,
+                                    expirationDate: selectedExpirationDate!,
+                                    batchNumber: batchNumberController.text,
+                                    purchaseDate: selectedPurchaseDate!);
                               },
                         child: const Text('Create Item'))
                   ],
@@ -625,173 +991,3 @@ class _CategoryTagsState extends ConsumerState<_CategoryTags> {
     });
   }
 }
-
-/*            const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: GroupTitle(title: 'Opening Inventory Information'),
-              ),
-              Row(
-                children: [
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: TextFormField(
-                        controller: openingStockController,
-                        focusNode: openingStockFocusNode,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Opening Stock'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Please enter your starting stock level';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                  const Padding(padding: EdgeInsets.only(left: 16.0)),
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: TextFormField(
-                        controller: stockLocationController,
-                        focusNode: stockLocationFocusNode,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Stock Location'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Please enter where the stock is located';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                  const Padding(padding: EdgeInsets.only(left: 16.0)),
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: TextFormField(
-                        controller: expirationDateController,
-                        focusNode: expirationDateFocusNode,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Expiration Date'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Please enter product expiration date';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                  const Padding(padding: EdgeInsets.only(left: 16.0)),
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: TextFormField(
-                        controller: batchNumberController,
-                        focusNode: batchNumberFocusNode,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Batch/Lot Number'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Please enter batch lot number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: TextFormField(
-                        controller: costPriceController,
-                        focusNode: costPriceFocusNode,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Cost Price (in Php)'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Please enter your cost per product unit';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                  const Padding(padding: EdgeInsets.only(left: 16.0)),
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: TextFormField(
-                        controller: salePriceController,
-                        focusNode: salePriceFocusNode,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Sale Price (in Php)'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Please enter your selling price per product unit';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                  const Padding(padding: EdgeInsets.only(left: 16.0)),
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: TextFormField(
-                        controller: purchaseDateController,
-                        focusNode: purchaseDateFocusNode,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Purchase Date'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Please enter product purchase date';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                  const Padding(padding: EdgeInsets.only(left: 16.0)),
-                  Flexible(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: TextFormField(
-                        controller: supplierController,
-                        focusNode: supplierFocusNode,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(), labelText: 'Supplier'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Please enter product supplier';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),*/

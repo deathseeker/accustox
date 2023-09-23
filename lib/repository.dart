@@ -1,12 +1,14 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'database.dart';
+import 'enumerated_values.dart';
 import 'models.dart';
 import 'repository_interface.dart';
 import 'services.dart';
@@ -203,6 +205,11 @@ class NavigationRepository implements NavigationRepositoryInterface {
   @override
   navigateToNewItem() {
     return _services.navigateToNewItem();
+  }
+
+  @override
+  navigateToEditItem({required Item item}) {
+    return _services.navigateToEditItem(item);
   }
 }
 
@@ -408,8 +415,12 @@ class ItemRepository implements ItemInterface {
   }
 
   @override
-  Future<void> addItem({required String uid, required Item item}) {
-    return _db.addItem(uid, item);
+  Future<void> addItem(
+      {required String uid,
+      required Item item,
+      required Stock stock,
+      required Inventory inventory}) {
+    return _db.addItem(uid, item, stock, inventory);
   }
 
   @override
@@ -449,14 +460,64 @@ class ItemRepository implements ItemInterface {
       required String uid,
       required ImageStorageUploadData imageStorageUploadData,
       required Item item,
-      required WidgetRef ref}) {
+      required WidgetRef ref,
+      required String openingStock,
+      required String costPrice,
+      required String salePrice,
+      required String expirationWarning,
+      required String averageDailyDemand,
+      required String maximumDailyDemand,
+      required String averageLeadTime,
+      required String maximumLeadTime,
+      required Supplier? supplier,
+      required StockLocation? stockLocation,
+      required DateTime expirationDate,
+      required String batchNumber,
+      required DateTime purchaseDate}) {
     return _services.reviewAndSubmitItem(
         formKey: formKey,
         imageFile: imageFile,
         uid: uid,
         imageStorageUploadData: imageStorageUploadData,
         item: item,
-        ref: ref);
+        ref: ref,
+        openingStock: openingStock,
+        costPrice: costPrice,
+        salePrice: salePrice,
+        expirationWarning: expirationWarning,
+        averageDailyDemand: averageDailyDemand,
+        maximumDailyDemand: maximumDailyDemand,
+        averageLeadTime: averageLeadTime,
+        maximumLeadTime: maximumLeadTime,
+        supplier: supplier,
+        stockLocation: stockLocation,
+        expirationDate: expirationDate,
+        batchNumber: batchNumber,
+        purchaseDate: purchaseDate);
+  }
+
+  @override
+  reviewAndSubmitItemUpdate(
+      {required GlobalKey<FormState> formKey,
+      required WidgetRef ref,
+      required ItemChangeNotifier itemChangeNotifier,
+      required Item oldItem,
+      required ImageFile imageFile,
+      required uid,
+      required ImageStorageUploadData imageStorageUploadData}) {
+    return _services.reviewAndSubmitItemUpdate(
+        formKey: formKey,
+        ref: ref,
+        itemChangeNotifier: itemChangeNotifier,
+        oldItem: oldItem,
+        imageFile: imageFile,
+        uid: uid,
+        imageStorageUploadData: imageStorageUploadData);
+  }
+
+  @override
+  Stream<List<Item>> streamCurrentItemList({required String uid}) {
+    return _db.streamCurrentItemList(uid);
   }
 }
 
@@ -501,6 +562,11 @@ class StockLocationRepository implements StockLocationInterface {
       required StockLocation parentLocation,
       required StockLocation subLocation}) {
     return _db.addSubLocation(uid, parentLocation, subLocation);
+  }
+
+  @override
+  Stream<List<StockLocation>> streamLocationDataList({required String uid}) {
+    return _db.streamLocationDataList(uid);
   }
 }
 
@@ -683,5 +749,79 @@ class ImageRepository implements ImageRepositoryInterface {
     Future<UploadTask> uploadTask =
         _db.uploadItemImage(image, uid, path, imageStorageUploadData);
     return uploadTask;
+  }
+}
+
+class InventoryRepository implements InventoryInterface {
+  final DatabaseService _db;
+  final Services _services;
+
+  InventoryRepository(this._db, this._services);
+
+  @override
+  Stream<InventorySummary> streamInventorySummary(
+      {required String uid, required String itemID}) {
+    return _db.streamInventorySummary(uid, itemID);
+  }
+
+  @override
+  getStockLevelState(
+      {required num stockLevel,
+      required num safetyStockLevel,
+      required num reorderPoint}) {
+    return _services.getStockLevelState(
+        stockLevel, safetyStockLevel, reorderPoint);
+  }
+
+  @override
+  Stream<List<Inventory>> streamInventory({required String uid}) {
+    return _db.streamInventory(uid);
+  }
+}
+
+class DateTimeRepository implements DateTimeInterface {
+  final Services _services;
+
+  DateTimeRepository(this._services);
+
+  @override
+  Timestamp dateTimeToTimestamp({required DateTime dateTime}) {
+    return _services.dateTimeToTimestamp(dateTime);
+  }
+
+  @override
+  DateTime timestampToDateTime({required Timestamp timestamp}) {
+    return _services.timestampToDateTime(timestamp);
+  }
+
+  @override
+  Future<DateTime?> selectDate(
+      {required BuildContext context,
+      required DateTime initialDate,
+      required DateTime firstDate,
+      required DateTime lastDate}) {
+    return _services.selectDate(context, initialDate, firstDate, lastDate);
+  }
+}
+
+class PerishabilityRepository implements PerishabilityInterface {
+  final Services _services;
+
+  PerishabilityRepository(this._services);
+
+  @override
+  bool enableExpirationDateInput({required Perishability perishability}) {
+    return _services.enableExpirationDateInput(perishability);
+  }
+}
+
+class PluralizationRepository implements PluralizationInterface {
+  final Services _services;
+
+  PluralizationRepository(this._services);
+
+  @override
+  String pluralize({required String noun, required num count}) {
+    return _services.pluralize(noun, count);
   }
 }
