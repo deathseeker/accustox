@@ -594,7 +594,7 @@ class AsyncCurrentInventoryDataListNotifier
     extends AutoDisposeAsyncNotifier<List<CurrentInventoryData>> {
   @override
   FutureOr<List<CurrentInventoryData>> build() {
-    var asyncCurrentInventoryList = ref.watch(streamInventoryProvider);
+    var asyncCurrentInventoryList = ref.watch(streamInventoryListProvider);
     var currentInventoryFilter =
         ref.watch(currentInventoryFilterSelectionProvider);
     List<CurrentInventoryData> currentInventoryDataList = [];
@@ -1740,20 +1740,20 @@ class Stock with ChangeNotifier {
     final data = doc.data() as Map<String, dynamic>;
     return Stock(
         item: data['item'],
-        supplier: data['supplier'],
-        stockLevel: data['stockLevel'],
-        stockLocation: data['stockLocation'],
+        supplier: data['supplier'] ?? {},
+        stockLevel: data['stockLevel'] ?? 0.0,
+        stockLocation: data['stockLocation'] ?? {},
         expirationDate: dateTimeController.timestampToDateTime(
             timestamp: data['expirationDate']),
-        batchNumber: data['batchNumber'],
-        costPrice: data['costPrice'],
-        salePrice: data['salePrice'],
+        batchNumber: data['batchNumber'] ?? '',
+        costPrice: data['costPrice'] ?? 0.0,
+        salePrice: data['salePrice'] ?? 0.0,
         purchaseDate: dateTimeController.timestampToDateTime(
             timestamp: data['purchaseDate']),
         inventoryCreatedOn: dateTimeController.timestampToDateTime(
             timestamp: data['inventoryCreatedOn']),
-        expirationWarning: data['expirationWarning'],
-        stockID: data['stockID']);
+        expirationWarning: data['expirationWarning'] ?? 0.0,
+        stockID: data['stockID'] ?? '');
   }
 
   Map<String, dynamic> toMap() {
@@ -1769,6 +1769,7 @@ class Stock with ChangeNotifier {
       'purchaseDate': purchaseDate,
       'inventoryCreatedOn': inventoryCreatedOn,
       'expirationWarning': expirationWarning,
+      'stockID': stockID,
     };
   }
 
@@ -1804,6 +1805,7 @@ class Stock with ChangeNotifier {
       'inventoryCreatedOn':
           dateTimeController.dateTimeToTimestamp(dateTime: inventoryCreatedOn!),
       'expirationWarning': expirationWarning,
+      'stockID': stockID
     };
   }
 
@@ -2079,4 +2081,68 @@ class CurrentInventoryData {
 
   CurrentInventoryData(
       {required this.inventory, required this.stockLevelState});
+}
+
+class InventoryTransaction {
+  final String inventoryTransactionID;
+  final String transactionType;
+  final double quantityChange;
+  final DateTime transactionMadeOn;
+  final Map<String, dynamic>? stock;
+  final String reason;
+
+  InventoryTransaction({
+    required this.inventoryTransactionID,
+    required this.transactionType,
+    required this.quantityChange,
+    required this.transactionMadeOn,
+    required this.reason,
+    required this.stock,
+  });
+
+  factory InventoryTransaction.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return InventoryTransaction(
+      inventoryTransactionID: data['inventoryTransactionID'] ?? '',
+      transactionType: data['transactionType'] ?? '',
+      quantityChange: data['quantityChange'],
+      transactionMadeOn: dateTimeController.timestampToDateTime(
+          timestamp: data['transactionMadeOn']),
+      reason: data['reason'] ?? '',
+      stock: data['stock'],
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'inventoryTransactionId': inventoryTransactionID,
+      'transactionType': transactionType,
+      'quantityChange': quantityChange,
+      'transactionMadeOn': Timestamp.fromDate(transactionMadeOn),
+      'reason': reason, // Include reason in Firestore data
+      'stock': stock,
+    };
+  }
+
+  factory InventoryTransaction.fromMap(Map map) {
+    return InventoryTransaction(
+      inventoryTransactionID: map['inventoryTransactionID'],
+      transactionType: map['transactionType'],
+      quantityChange: map['quantityChange'],
+      transactionMadeOn: map['transactionMadeOn'],
+      reason: map['reason'],
+      stock: map['stock'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'inventoryTransactionID': inventoryTransactionID,
+      'transactionType': transactionType,
+      'quantityChange': quantityChange,
+      'transactionMadeOn': transactionMadeOn,
+      'reason': reason, // Include reason in the Map
+      'stock': stock,
+    };
+  }
 }

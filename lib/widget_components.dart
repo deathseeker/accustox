@@ -1,8 +1,8 @@
 // ignore_for_file: library_private_types_in_public_api
 
-import 'package:accustox/color_scheme.dart';
-import 'package:accustox/controllers.dart';
-import 'package:accustox/sub_location_management.dart';
+import 'color_scheme.dart';
+import 'controllers.dart';
+import 'sub_location_management.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'colors.dart';
@@ -362,57 +362,82 @@ class _CurrentInventoryFilterChipsState
 
 class CurrentInventoryItemCard extends StatelessWidget {
   const CurrentInventoryItemCard(
-      {super.key,
-      required this.itemName,
-      required this.sku,
-      required this.stockLevel,
-      required this.stockLevelState,
-      required this.unit});
+      {super.key, required this.currentInventoryData});
 
-  final String itemName;
-  final String sku;
-  final double stockLevel;
-  final StockLevelState stockLevelState;
-  final String unit;
+  final CurrentInventoryData currentInventoryData;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      borderOnForeground: true,
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 78,
-        width: 244,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4.0, 4.0, 4.0, 0.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    itemName,
-                    style: customTextStyle.titleMedium
-                        .copyWith(color: lightColorScheme.onSurface),
-                  ),
-                  Text(
-                    sku,
-                    style: customTextStyle.bodyMedium
-                        .copyWith(color: lightColorScheme.onSurface),
-                  ),
-                ],
+    Item item = Item.fromMap(currentInventoryData.inventory.item!);
+
+    return GestureDetector(
+      onTap: () => navigationController.navigateToCurrentInventoryDetails(
+          currentInventoryData: currentInventoryData),
+      child: Card(
+        borderOnForeground: true,
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          height: 78,
+          width: 244,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4.0, 4.0, 4.0, 0.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.itemName!,
+                      style: customTextStyle.titleMedium
+                          .copyWith(color: lightColorScheme.onSurface),
+                    ),
+                    Text(
+                      item.sku!,
+                      style: customTextStyle.bodyMedium
+                          .copyWith(color: lightColorScheme.onSurface),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            StockLevelNotification(
-                stockLevel: stockLevel,
-                stockLevelState: stockLevelState,
-                unit: unit)
-          ],
+              StockLevelNotification(
+                  stockLevel: currentInventoryData.inventory.stockLevel!,
+                  stockLevelState: currentInventoryData.stockLevelState!,
+                  unit: item.unitOfMeasurement!)
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class ExpirationNotification extends StatelessWidget {
+  const ExpirationNotification({super.key, required this.expirationState});
+
+  final ExpirationState expirationState;
+
+  @override
+  Widget build(BuildContext context) {
+    Color? color;
+
+    switch (expirationState) {
+      case ExpirationState.good:
+        color = lightColorScheme.tertiary;
+        break;
+      case ExpirationState.nearExpiration:
+        color = lightCustomColors.sourceMikadoyellow;
+        break;
+      case ExpirationState.expired:
+        color = lightCustomColors.redalert;
+        break;
+    }
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 92.0, maxWidth: 16.0),
+      color: color,
     );
   }
 }
@@ -533,9 +558,9 @@ class IncomingInventoryNotification extends StatelessWidget {
 }
 
 class ItemDetailsCard extends StatelessWidget {
-  const ItemDetailsCard({super.key, required this.itemDetailsData});
+  const ItemDetailsCard({super.key, required this.item});
 
-  final ItemDetailsData itemDetailsData;
+  final Item item;
 
   @override
   Widget build(BuildContext context) {
@@ -553,20 +578,9 @@ class ItemDetailsCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              ItemPicture(imageURL: itemDetailsData.imageURL),
+              ItemPicture(imageURL: item.imageURL!),
               const Padding(padding: EdgeInsets.only(left: 8.0)),
-              ItemDetails(
-                  itemName: itemDetailsData.itemName,
-                  sku: itemDetailsData.sku,
-                  ean: itemDetailsData.ean,
-                  productID: itemDetailsData.productID,
-                  manufacturer: itemDetailsData.manufacturer,
-                  brand: itemDetailsData.brand,
-                  country: itemDetailsData.country,
-                  productType: itemDetailsData.productType,
-                  unitOfMeasurement: itemDetailsData.unitOfMeasurement,
-                  manufacturerPartNumber:
-                      itemDetailsData.manufacturerPartNumber)
+              ItemDetails(item: item)
             ],
           ),
         ),
@@ -684,7 +698,7 @@ class InformationWithLabel extends StatelessWidget {
               .copyWith(color: lightColorScheme.onSurfaceVariant),
         ),
         Text(
-          data,
+          data.isEmpty ? '--' : data,
           style: customTextStyle.bodyMedium
               .copyWith(color: lightColorScheme.onSurface),
         ),
@@ -712,7 +726,7 @@ class InformationWithLabelLarge extends StatelessWidget {
               .copyWith(color: lightColorScheme.onSurfaceVariant),
         ),
         Text(
-          data,
+          data.isEmpty ? '--' : data,
           style: customTextStyle.bodyLarge
               .copyWith(color: lightColorScheme.onSurface),
         ),
@@ -722,29 +736,9 @@ class InformationWithLabelLarge extends StatelessWidget {
 }
 
 class ItemDetails extends StatelessWidget {
-  const ItemDetails(
-      {super.key,
-      required this.itemName,
-      required this.sku,
-      required this.ean,
-      required this.productID,
-      required this.manufacturer,
-      required this.brand,
-      required this.country,
-      required this.productType,
-      required this.unitOfMeasurement,
-      required this.manufacturerPartNumber});
+  const ItemDetails({super.key, required this.item});
 
-  final String itemName;
-  final String sku;
-  final String ean;
-  final String productID;
-  final String manufacturer;
-  final String brand;
-  final String country;
-  final String productType;
-  final String unitOfMeasurement;
-  final String manufacturerPartNumber;
+  final Item item;
 
   @override
   Widget build(BuildContext context) {
@@ -756,7 +750,7 @@ class ItemDetails extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ItemTitle(itemName: itemName),
+            ItemTitle(itemName: item.itemName!),
             EditItemButton(onPressed: () {})
           ],
         ),
@@ -764,18 +758,27 @@ class ItemDetails extends StatelessWidget {
           runSpacing: 4.0,
           spacing: 16.0,
           children: [
-            InformationWithLabel(label: 'SKU', data: sku),
-            InformationWithLabel(label: 'EAN', data: ean),
-            InformationWithLabel(label: 'ProductID', data: productID),
+            InformationWithLabel(
+                label: 'Perishability', data: item.perishability!),
+            InformationWithLabel(label: 'SKU', data: item.sku!),
+            InformationWithLabel(label: 'EAN', data: item.ean!),
+            InformationWithLabel(
+                label: 'Product Type', data: item.productType!),
+            InformationWithLabel(label: 'Brand', data: item.brand!),
+            InformationWithLabel(
+                label: 'Manufacturer', data: item.manufacturer!),
             InformationWithLabel(
                 label: 'Manufacturer Part Number',
-                data: manufacturerPartNumber),
-            InformationWithLabel(label: 'Manufacturer', data: manufacturer),
-            InformationWithLabel(label: 'Brand', data: brand),
-            InformationWithLabel(label: 'Country', data: country),
-            InformationWithLabel(label: 'Product Type', data: productType),
+                data: item.manufacturerPartNumber!),
             InformationWithLabel(
-                label: 'Unit of Measurement', data: unitOfMeasurement)
+                label: 'Unit of Measurement', data: item.unitOfMeasurement!),
+            InformationWithLabel(label: 'Size', data: item.size!),
+            InformationWithLabel(label: 'Color', data: item.color!),
+            InformationWithLabel(label: 'Length', data: item.length!),
+            InformationWithLabel(label: 'Width', data: item.width!),
+            InformationWithLabel(label: 'Height', data: item.height!),
+            InformationWithLabel(
+                label: 'Description', data: item.itemDescription!),
           ],
         )
       ],
@@ -822,7 +825,7 @@ class ItemDashboardCard extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 Text(
-                  content,
+                  content.isEmpty ? '--' : content,
                   style: customTextStyle.headlineMedium
                       .copyWith(color: lightColorScheme.onSurface),
                   textAlign: TextAlign.center,
@@ -835,67 +838,139 @@ class ItemDashboardCard extends StatelessWidget {
 }
 
 class ItemInventoryCard extends StatelessWidget {
-  const ItemInventoryCard(
-      {super.key,
-      required this.stockLevel,
-      required this.stockLocation,
-      required this.expirationDate,
-      required this.batchNumber,
-      required this.costPrice,
-      required this.salePrice,
-      required this.purchaseDate,
-      required this.supplierName,
-      required this.onPressed});
+  final Stock stock;
 
-  final String stockLevel;
-  final String stockLocation;
-  final String expirationDate;
-  final String batchNumber;
-  final String costPrice;
-  final String salePrice;
-  final String purchaseDate;
-  final String supplierName;
-  final VoidCallback onPressed;
+  const ItemInventoryCard({super.key, required this.stock});
 
   @override
   Widget build(BuildContext context) {
+    Item item = Item.fromMap(stock.item!);
+    Supplier supplier = Supplier.fromMap(stock.supplier!);
+    StockLocation stockLocation = StockLocation.fromMap(stock.stockLocation!);
+    bool expires = perishabilityController.getPerishabilityState(
+                perishabilityString: item.perishability!) ==
+            Perishability.durableGoods
+        ? false
+        : true;
+    bool hasPurchaseDate =
+        stock.purchaseDate! == defaultDateTime ? false : true;
+    var stockLevel =
+        '${stock.stockLevel.toString()} ${pluralizationController.pluralize(noun: item.unitOfMeasurement!, count: stock.stockLevel!)}';
+    var stockLocationAddress = stockLocation.locationAddress;
+    var expirationDate = expires
+        ? dateTimeController.formatDateTimeToYMd(
+            dateTime: stock.expirationDate!)
+        : 'N/A';
+    var batchNumber = stock.batchNumber!;
+    var costPrice =
+        currencyController.formatAsPhilippineCurrency(amount: stock.costPrice!);
+    var salePrice =
+        currencyController.formatAsPhilippineCurrency(amount: stock.salePrice!);
+    var purchaseDate = hasPurchaseDate
+        ? dateTimeController.formatDateTimeToYMd(dateTime: stock.purchaseDate!)
+        : '--/--/----';
+    var supplierName = supplier.supplierName;
+
+    var expirationState = dateTimeController.getExpirationState(
+        stock.expirationDate!, stock.expirationWarning!);
+
+    var daysToExpiration = dateTimeController.getDaysToExpiration(
+        expirationDate: stock.expirationDate!);
+
     return Card(
       borderOnForeground: true,
+      clipBehavior: Clip.antiAlias,
       child: Container(
         constraints: const BoxConstraints(minHeight: 92.0),
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Wrap(
-                  spacing: 16.0,
-                  runSpacing: 4.0,
+        child: Row(
+          children: [
+            expires
+                ? ExpirationNotification(expirationState: expirationState)
+                : const SizedBox(
+                    height: 0.0,
+                    width: 0.0,
+                  ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    InformationWithLabel(
-                        label: 'Stock Level', data: stockLevel),
-                    InformationWithLabel(
-                        label: 'Stock Location', data: stockLocation),
-                    InformationWithLabel(
-                        label: 'Expiration Date', data: expirationDate),
-                    InformationWithLabel(
-                        label: 'Batch/Lot Number', data: batchNumber),
-                    InformationWithLabel(label: 'Cost Price', data: costPrice),
-                    InformationWithLabel(label: 'Sale Price', data: salePrice),
-                    InformationWithLabel(
-                        label: 'Purchase Date', data: purchaseDate),
-                    InformationWithLabel(label: 'Supplier', data: supplierName)
+                    Flexible(
+                      child: Wrap(
+                        spacing: 16.0,
+                        runSpacing: 4.0,
+                        children: [
+                          InformationWithLabel(
+                              label: 'Stock Level', data: stockLevel),
+                          InformationWithLabel(
+                              label: 'Stock Location',
+                              data: stockLocationAddress),
+                          InformationWithLabel(
+                              label: 'Cost Price', data: costPrice),
+                          InformationWithLabel(
+                              label: 'Sale Price', data: salePrice),
+                          InformationWithLabel(
+                              label: 'Batch/Lot Number', data: batchNumber),
+                          InformationWithLabel(
+                              label: 'Supplier', data: supplierName),
+                          InformationWithLabel(
+                              label: 'Purchase Date', data: purchaseDate),
+                          InformationWithLabel(
+                              label: 'Expiration Date', data: expirationDate),
+                          expires
+                              ? ExpirationMessage(
+                                  expirationState: expirationState,
+                                  daysToExpiration: daysToExpiration)
+                              : const SizedBox(
+                                  height: 0.0,
+                                  width: 0.0,
+                                ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-              TextButton(onPressed: onPressed, child: const Text('Transfer'))
-            ],
-          ),
+            ),
+            StockMoreMenuButton(
+              stock: stock,
+            )
+          ],
         ),
       ),
     );
+  }
+}
+
+class ExpirationMessage extends StatelessWidget {
+  final ExpirationState expirationState;
+  final int daysToExpiration;
+
+  const ExpirationMessage(
+      {super.key,
+      required this.expirationState,
+      required this.daysToExpiration});
+
+  @override
+  Widget build(BuildContext context) {
+    String data;
+    var unit =
+        pluralizationController.pluralize(noun: 'Day', count: daysToExpiration);
+
+    switch (expirationState) {
+      case ExpirationState.good:
+        data = '--';
+        break;
+      case ExpirationState.nearExpiration:
+        data = 'Expires in $daysToExpiration $unit';
+        break;
+      case ExpirationState.expired:
+        data = 'EXPIRED';
+        break;
+    }
+
+    return InformationWithLabel(label: 'Status', data: data);
   }
 }
 
@@ -3012,6 +3087,39 @@ class ItemMoreMenuButton extends ConsumerWidget {
   }
 }
 
+class StockMoreMenuButton extends StatelessWidget {
+  const StockMoreMenuButton({super.key, required this.stock});
+
+  final Stock stock;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      menuChildren: [
+        MenuItemButton(
+            onPressed: () =>
+                navigationController.navigateToMoveInventory(stock: stock),
+            child: const Text('Move')),
+        MenuItemButton(
+            onPressed: () =>
+                navigationController.navigateToAdjustInventory(stock: stock),
+            child: const Text('Adjust')),
+      ],
+      builder: (context, controller, child) {
+        return IconButton(
+            onPressed: () {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            },
+            icon: const Icon(Icons.more_horiz_outlined));
+      },
+    );
+  }
+}
+
 class LocationDropDownMenu extends ConsumerStatefulWidget {
   const LocationDropDownMenu({super.key});
 
@@ -3183,5 +3291,128 @@ class _SupplierDropDownMenuState extends ConsumerState<SupplierDropDownMenu> {
               height: 0.0,
               width: 0.0,
             ));
+  }
+}
+
+class MoveInventoryLocationDropDownMenu extends ConsumerStatefulWidget {
+  const MoveInventoryLocationDropDownMenu(this.stockLocationList, {super.key});
+
+  final List<StockLocation> stockLocationList;
+
+  @override
+  _MoveInventoryLocationDropDownMenu createState() =>
+      _MoveInventoryLocationDropDownMenu();
+}
+
+class _MoveInventoryLocationDropDownMenu
+    extends ConsumerState<MoveInventoryLocationDropDownMenu> {
+  StockLocation? selectedStockLocation;
+  late final List<StockLocation> locationList;
+
+  @override
+  void initState() {
+    super.initState();
+    locationList = widget.stockLocationList;
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<DropdownMenuEntry<StockLocation>> stockLocationEntries =
+        <DropdownMenuEntry<StockLocation>>[];
+    for (final StockLocation stockLocation in locationList) {
+      stockLocationEntries.add(
+        DropdownMenuEntry<StockLocation>(
+            value: stockLocation, label: stockLocation.locationAddress),
+      );
+    }
+    return DropdownMenu<StockLocation>(
+      enableFilter: true,
+      enableSearch: true,
+      label: const Text('New Stock Location (Required)'),
+      dropdownMenuEntries: stockLocationEntries,
+      onSelected: (StockLocation? stockLocation) {
+        setState(() {
+          selectedStockLocation = stockLocation;
+        });
+        ref
+            .read(locationSelectionProvider.notifier)
+            .setLocation(stockLocation!);
+      },
+    );
+  }
+}
+
+class MoveInventoryInformationCard extends StatelessWidget {
+  const MoveInventoryInformationCard(
+      {super.key,
+      required this.currentLocation,
+      required this.currentStockLevel,
+      required this.retainedStockLevel});
+
+  final String currentLocation;
+  final String currentStockLevel;
+  final String retainedStockLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      borderOnForeground: true,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Wrap(
+          spacing: 16.0,
+          runSpacing: 4.0,
+          children: [
+            InformationWithLabelLarge(
+                label: 'Current Stock Location', data: currentLocation),
+            InformationWithLabelLarge(
+                label: 'Current Stock Level', data: currentStockLevel),
+            InformationWithLabelLarge(
+                label: 'Retained Stock', data: retainedStockLevel)
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class InventoryTransactionCard extends StatelessWidget {
+  const InventoryTransactionCard(
+      {super.key, required this.inventoryTransaction});
+
+  final InventoryTransaction inventoryTransaction;
+
+  @override
+  Widget build(BuildContext context) {
+    var transactionMadeOn = dateTimeController.formatDateTimeToYMdjm(
+        dateTime: inventoryTransaction.transactionMadeOn);
+    return Card(
+      borderOnForeground: true,
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: Wrap(
+          spacing: 16.0,
+          runSpacing: 4.0,
+          children: [
+            InformationWithLabel(
+                label: 'Transaction',
+                data: inventoryTransaction.transactionType),
+            InformationWithLabel(
+                label: 'Change in Quantity',
+                data: inventoryTransaction.quantityChange.toString()),
+            InformationWithLabel(
+                label: 'Transaction Made On', data: transactionMadeOn),
+            InformationWithLabel(
+                label: 'Reason', data: inventoryTransaction.reason)
+          ],
+        ),
+      ),
+    );
   }
 }

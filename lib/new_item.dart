@@ -854,8 +854,6 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                                     .map((e) => e.toMap())
                                     .toList();
 
-                                var stockLevel = double.tryParse(
-                                    openingStockController.text);
 
                                 Item item = Item(
                                     itemName: itemNameController.text,

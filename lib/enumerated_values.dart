@@ -204,3 +204,23 @@ enum CurrentInventoryFilter {
 
   const CurrentInventoryFilter(this.label);
 }
+
+enum ExpirationState {
+  good('Good'),
+  nearExpiration('Near Expiration'),
+  expired('Expired');
+
+  final String label;
+
+  const ExpirationState(this.label);
+}
+
+enum AdjustmentType {
+  stockLevelAdjustment('Stock Level Adjustment'),
+  costPriceAdjustment('Cost Price Adjustment'),
+  salePriceAdjustment('Sale Price Adjustment');
+
+  final String label;
+
+  const AdjustmentType(this.label);
+}

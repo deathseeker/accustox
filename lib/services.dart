@@ -1,8 +1,13 @@
+import 'package:accustox/current_inventory_details.dart';
 import 'package:accustox/edit_item.dart';
 import 'package:accustox/enumerated_values.dart';
+import 'package:accustox/move_inventory.dart';
+import 'package:accustox/new_adjustment.dart';
+import 'package:accustox/new_inventory_stock.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
+import 'package:intl/intl.dart';
 import 'edit_supplier.dart';
 import 'providers.dart';
 import 'widget_components.dart';
@@ -212,6 +217,27 @@ class Services {
 
   navigateToNewItem() {
     return navigatorKey.currentState?.pushNamed('newItem');
+  }
+
+  navigateToCurrentInventoryDetails(CurrentInventoryData currentInventoryData) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) => CurrentInventoryDetails(
+            currentInventoryData: currentInventoryData)));
+  }
+
+  navigateToAddInventory(Inventory inventory) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) => NewInventoryStock(inventory: inventory)));
+  }
+
+  navigateToMoveInventory(Stock stock) {
+    return navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (context) => MoveInventory(stock: stock)));
+  }
+
+  navigateToAdjustInventory(Stock stock) {
+    return navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (context) => NewAdjustment(stock: stock)));
   }
 
   bool hasProfileChanged(
@@ -952,6 +978,143 @@ class Services {
     return fileName;
   }
 
+  reviewAndAdjustStockLevel(GlobalKey<FormState> formKey, String uid,
+      Stock stock, String adjustedStockLevel, String reason) {
+    bool isValid = formKey.currentState!.validate();
+
+    if (isValid) {
+      var adjustedStockLevelDouble = double.tryParse(adjustedStockLevel);
+
+      snackBarController.showLoadingSnackBar(message: "Adjusting stock...");
+
+      inventoryController.inventoryStockLevelAdjustment(
+          uid: uid,
+          stock: stock,
+          adjustedStockLevel: adjustedStockLevelDouble!,
+          reason: reason).whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar("Stock successfully adjusted...");
+
+        navigationController.navigateToPreviousPage();
+      });
+    } else {
+      snackBarController
+          .showSnackBarError('Kindly review the adjustment information...');
+    }
+  }
+
+  reviewAndMoveInventory(
+      GlobalKey<FormState> formKey,
+      String uid,
+      StockLocation? newStockLocation,
+      String movedStockLevel,
+      Stock currentStock) {
+    bool isValid = formKey.currentState!.validate();
+
+    var movedStockLevelDouble = double.tryParse(movedStockLevel);
+
+    if (newStockLocation == null) {
+      snackBarController
+          .showSnackBarError("Please add the stock location to continue");
+    } else if (!isValid) {
+      snackBarController
+          .showSnackBarError('Kindly review the movement information...');
+    } else {
+      var stockID = itemController.getItemID();
+      Stock movedStock = Stock(
+          item: currentStock.item,
+          supplier: currentStock.supplier,
+          stockLevel: movedStockLevelDouble,
+          stockLocation: newStockLocation.toFirestore(),
+          expirationDate: currentStock.expirationDate,
+          batchNumber: currentStock.batchNumber,
+          costPrice: currentStock.costPrice,
+          salePrice: currentStock.salePrice,
+          purchaseDate: currentStock.purchaseDate,
+          inventoryCreatedOn: currentStock.inventoryCreatedOn,
+          expirationWarning: currentStock.expirationWarning,
+          stockID: stockID);
+
+      snackBarController.showLoadingSnackBar(message: "Moving stock...");
+
+      inventoryController
+          .moveInventoryStock(
+              uid: uid, currentStock: currentStock, movedStock: movedStock)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar("Stock successfully moved...");
+
+        navigationController.navigateToPreviousPage();
+      });
+    }
+  }
+
+  reviewAndSubmitStock(
+      GlobalKey<FormState> formKey,
+      String uid,
+      Item item,
+      String openingStock,
+      String costPrice,
+      String salePrice,
+      String expirationWarning,
+      Supplier? supplier,
+      StockLocation? stockLocation,
+      DateTime expirationDate,
+      String batchNumber,
+      DateTime purchaseDate,
+      Inventory inventory,
+      String newLeadTime) {
+    bool isValid = formKey.currentState!.validate();
+
+    if (stockLocation == null) {
+      snackBarController
+          .showSnackBarError("Please add the stock location to continue");
+    } else if (supplier == null) {
+      snackBarController
+          .showSnackBarError("Please add the supplier to continue");
+    } else if (isValid) {
+      var stockID = itemController.getItemID();
+      var stockLevel = double.tryParse(openingStock);
+
+      var costPriceDouble = double.tryParse(costPrice);
+      var salePriceDouble = double.tryParse(salePrice);
+      var expirationWarningDouble = double.tryParse(expirationWarning);
+      var newLeadTimeDouble = double.tryParse(newLeadTime);
+
+      Stock stock = Stock(
+          item: item.toFirestore(),
+          supplier: supplier.toFirestore(),
+          stockLevel: stockLevel,
+          stockLocation: stockLocation.toFirestore(),
+          expirationDate: expirationDate,
+          batchNumber: batchNumber,
+          costPrice: costPriceDouble,
+          salePrice: salePriceDouble,
+          purchaseDate: purchaseDate,
+          inventoryCreatedOn: DateTime.now(),
+          expirationWarning: expirationWarningDouble,
+          stockID: stockID);
+
+      snackBarController.showLoadingSnackBar(message: "Adding stock...");
+
+      inventoryController
+          .addInventoryStock(
+              uid: uid,
+              itemID: item.itemID!,
+              stock: stock,
+              inventory: inventory,
+              newLeadTime: newLeadTimeDouble!)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar("Item successfully added...");
+
+        navigationController.navigateToPreviousPage();
+      });
+    } else {
+      showSnackBarError('Kindly review the stock information...');
+    }
+  }
+
   reviewAndSubmitItem({
     required GlobalKey<FormState> formKey,
     required ImageFile imageFile,
@@ -1257,6 +1420,29 @@ class Services {
     }
   }
 
+  ExpirationState getExpirationState(
+      DateTime expirationDate, double expirationWarning) {
+    DateTime now = DateTime.now();
+    Duration timeUntilExpiration = expirationDate.difference(now);
+
+    int warningDays = expirationWarning.ceil();
+
+    if (timeUntilExpiration.inDays <= 0) {
+      return ExpirationState.expired;
+    } else if (timeUntilExpiration.inDays <= warningDays) {
+      return ExpirationState.nearExpiration;
+    } else {
+      return ExpirationState.good;
+    }
+  }
+
+  int getDaysToExpiration(DateTime expirationDate) {
+    DateTime now = DateTime.now();
+    Duration timeUntilExpiration = expirationDate.difference(now);
+
+    return timeUntilExpiration.inDays;
+  }
+
   DateTime timestampToDateTime(Timestamp timestamp) {
     return timestamp.toDate();
   }
@@ -1290,6 +1476,16 @@ class Services {
     return enable;
   }
 
+  Perishability getPerishabilityState({required String perishabilityString}) {
+    for (var perishability in Perishability.values) {
+      if (perishability.label == perishabilityString) {
+        return perishability;
+      }
+    }
+
+    return Perishability.values.first;
+  }
+
   String pluralize(String noun, num count) {
     if (count == 1) {
       return noun; // Singular form
@@ -1297,5 +1493,109 @@ class Services {
       // Basic pluralization rule: Add "s" to the noun
       return "${noun}s"; // Plural form
     }
+  }
+
+  String formatAsPhilippineCurrency(num amount) {
+    final formatter = NumberFormat.currency(
+      locale: 'en_PH',
+      symbol: '₱',
+    );
+    return formatter.format(amount);
+  }
+
+  String formatDateTimeToYMd(DateTime dateTime) {
+    DateFormat formattedDateTime = DateFormat.yMd();
+    return formattedDateTime.format(dateTime);
+  }
+
+  String formatDateTimeToYMdjm(DateTime dateTime) {
+    DateFormat formattedDateTime = DateFormat.yMd().add_jm();
+    return formattedDateTime.format(dateTime);
+  }
+
+  double getInventoryValue(double stockLevel, double costPrice) {
+    var inventoryValue = stockLevel * costPrice;
+
+    return inventoryValue;
+  }
+
+  double getMaximumLeadTime(double oldMaximumLeadTime, double newLeadTime) {
+    if (newLeadTime > oldMaximumLeadTime) {
+      return newLeadTime;
+    } else {
+      return oldMaximumLeadTime;
+    }
+  }
+
+  double getAverageLeadTime(double oldAverageLeadTime, newLeadTime) {
+    var sum = oldAverageLeadTime + newLeadTime;
+    var average = sum / 2;
+
+    return average.ceilToDouble();
+  }
+
+  double getSafetyStockLevel(double maximumLeadTime, double maximumDailyDemand,
+      double averageDailyDemand, double averageLeadTime) {
+    var safetyStockLevel = (maximumLeadTime * maximumDailyDemand) -
+        (averageDailyDemand * averageLeadTime);
+
+    return safetyStockLevel;
+  }
+
+  double getReorderPoint(double averageLeadTime, double averageDailyDemand,
+      double safetyStockLevel) {
+    var reorderPoint =
+        (averageLeadTime * averageDailyDemand) + safetyStockLevel;
+
+    return reorderPoint;
+  }
+
+  Map<String, dynamic> getInventoryStatisticsOnStockAdd(Inventory inventory,
+      double newLeadTime, double stockLevel, double costPrice) {
+    var oldMaximumLeadTime = inventory.maximumLeadTime;
+    var oldAverageLeadTime = inventory.averageLeadTime;
+    var maximumDailyDemand = inventory.maximumDailyDemand;
+    var averageDailyDemand = inventory.averageDailyDemand;
+
+    double? maximumLeadTime = statisticsController.getMaximumLeadTime(
+        oldMaximumLeadTime: oldMaximumLeadTime!, newLeadTime: newLeadTime);
+    double? averageLeadTime = statisticsController.getAverageLeadTime(
+        oldAverageLeadTime: oldAverageLeadTime!, newLeadTime: newLeadTime);
+    double? newInventory = statisticsController.getInventoryValue(
+        stockLevel: stockLevel, costPrice: costPrice);
+    double? newStockLevel = stockLevel;
+    double? safetyStockLevel = statisticsController.getSafetyStockLevel(
+        maximumLeadTime: maximumLeadTime,
+        maximumDailyDemand: maximumDailyDemand!,
+        averageDailyDemand: averageDailyDemand!,
+        averageLeadTime: averageLeadTime);
+    double? reorderPoint = statisticsController.getReorderPoint(
+        averageLeadTime: averageLeadTime,
+        averageDailyDemand: averageDailyDemand,
+        safetyStockLevel: safetyStockLevel);
+
+    Map<String, dynamic> data = {
+      'maximumLeadTime': maximumLeadTime,
+      'averageLeadTime': averageLeadTime,
+      'currentInventory': FieldValue.increment(newInventory),
+      'stockLevel': FieldValue.increment(newStockLevel),
+      'safetyStockLevel': safetyStockLevel,
+      'reorderPoint': reorderPoint,
+    };
+
+    return data;
+  }
+
+  bool isPositiveDoubleBelowOrEqualToCount(String input, double maxCount) {
+    // Check if the input is a valid number and greater than or equal to 0.
+    double? number = double.tryParse(input);
+    return number != null && number >= 0 && number <= maxCount;
+  }
+
+  double getAdjustedStockLevelForMovement(
+      double currentStockLevel, double adjustment) {
+    double adjustedStockLevel = currentStockLevel - adjustment;
+
+    return adjustedStockLevel;
   }
 }

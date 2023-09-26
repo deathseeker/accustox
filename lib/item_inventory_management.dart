@@ -1,103 +1,50 @@
+import 'package:accustox/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models.dart';
 import 'widget_components.dart';
 
 class ItemInventoryManagement extends StatelessWidget {
-  const ItemInventoryManagement({super.key});
+  const ItemInventoryManagement({super.key, required this.item});
+
+  final Item item;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GroupTitleWithTextButton(
-              title: 'Inventory',
-              onPressed: () {},
-              buttonLabel: 'Adjust Inventory'),
-          const Padding(padding: EdgeInsets.only(top: 8.0)),
-          const InventoryList()
-        ],
-      ),
-    );
+    return InventoryList(item);
   }
 }
 
-class InventoryList extends StatelessWidget {
-  const InventoryList({super.key});
+class InventoryList extends ConsumerWidget {
+  const InventoryList(this.item, {super.key});
+
+  final Item item;
 
   @override
-  Widget build(BuildContext context) {
-    List<ItemInventoryData> itemInventoryList = [
-      ItemInventoryData(
-          '999',
-          'Sample Warehouse A',
-          'MM/DD/YYYY',
-          'ABCD12345',
-          'Php 999999.99',
-          'Php 999999.99',
-          'MM/DD/YYYY',
-          'SupplierName',
-          'stockID'),
-      ItemInventoryData(
-          '999',
-          'Sample Warehouse A',
-          'MM/DD/YYYY',
-          'ABCD12345',
-          'Php 999999.99',
-          'Php 999999.99',
-          'MM/DD/YYYY',
-          'SupplierName',
-          'stockID'),
-      ItemInventoryData(
-          '999',
-          'Sample Warehouse A',
-          'MM/DD/YYYY',
-          'ABCD12345',
-          'Php 999999.99',
-          'Php 999999.99',
-          'MM/DD/YYYY',
-          'SupplierName',
-          'stockID'),
-      ItemInventoryData(
-          '999',
-          'Sample Warehouse A',
-          'MM/DD/YYYY',
-          'ABCD12345',
-          'Php 999999.99',
-          'Php 999999.99',
-          'MM/DD/YYYY',
-          'SupplierName',
-          'stockID'),
-      ItemInventoryData(
-          '999',
-          'Sample Warehouse A',
-          'MM/DD/YYYY',
-          'ABCD12345',
-          'Php 999999.99',
-          'Php 999999.99',
-          'MM/DD/YYYY',
-          'SupplierName',
-          'stockID')
-    ];
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      itemBuilder: (context, index) {
-        ItemInventoryData data = itemInventoryList[index];
-        return ItemInventoryCard(
-            stockLevel: data.stockLevel,
-            stockLocation: data.stockLocation,
-            expirationDate: data.expirationDate,
-            batchNumber: data.batchNumber,
-            costPrice: data.costPrice,
-            salePrice: data.salePrice,
-            purchaseDate: data.purchaseDate,
-            supplierName: data.supplierName,
-            onPressed: () {});
-      },
-      itemCount: itemInventoryList.length,
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    var asyncStockList = ref.watch(streamStockListProvider(item.itemID!));
+
+    return asyncStockList.when(
+        data: (data) {
+          var stockList = data;
+
+          return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 56.0),
+            shrinkWrap: true,
+            itemBuilder: (context, index) {
+              Stock data = stockList[index];
+              return ItemInventoryCard(
+                stock: data,
+              );
+            },
+            itemCount: stockList.length,
+          );
+        },
+        error: (e, st) {
+          debugPrint(e.toString());
+          debugPrint(st.toString());
+          return const ErrorMessage(errorMessage: 'Something went wrong...');
+        },
+        loading: () => const LoadingWidget());
   }
 }

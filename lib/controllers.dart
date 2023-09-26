@@ -201,6 +201,24 @@ class NavigationController {
   navigateToEditItem({required Item item}) {
     return _navigationRepository.navigateToEditItem(item: item);
   }
+
+  navigateToCurrentInventoryDetails(
+      {required CurrentInventoryData currentInventoryData}) {
+    return _navigationRepository.navigateToCurrentInventoryDetails(
+        currentInventoryData: currentInventoryData);
+  }
+
+  navigateToAddInventory({required Inventory inventory}) {
+    return _navigationRepository.navigateToAddInventory(inventory: inventory);
+  }
+
+  navigateToMoveInventory({required Stock stock}) {
+    return _navigationRepository.navigateToMoveInventory(stock: stock);
+  }
+
+  navigateToAdjustInventory({required Stock stock}) {
+    return _navigationRepository.navigateToAdjustInventory(stock: stock);
+  }
 }
 
 final DialogController dialogController = DialogController();
@@ -732,8 +750,163 @@ class InventoryController {
         reorderPoint: reorderPoint);
   }
 
-  Stream<List<Inventory>> streamInventory({required String uid}) {
-    return _inventoryRepository.streamInventory(uid: uid);
+  Stream<List<Inventory>> streamInventoryList({required String uid}) {
+    return _inventoryRepository.streamInventoryList(uid: uid);
+  }
+
+  Stream<List<Stock>> streamStockList(
+      {required String uid, required String itemID}) {
+    return _inventoryRepository.streamStockList(uid: uid, itemID: itemID);
+  }
+
+  Future<void> addInventoryStock(
+      {required String uid,
+      required String itemID,
+      required Stock stock,
+      required Inventory inventory,
+      required double newLeadTime}) {
+    return _inventoryRepository.addInventoryStock(
+        uid: uid,
+        itemID: itemID,
+        stock: stock,
+        inventory: inventory,
+        newLeadTime: newLeadTime);
+  }
+
+  reviewAndSubmitStock(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Item item,
+      required String openingStock,
+      required String costPrice,
+      required String salePrice,
+      required String expirationWarning,
+      required Supplier? supplier,
+      required StockLocation? stockLocation,
+      required DateTime expirationDate,
+      required String batchNumber,
+      required DateTime purchaseDate,
+      required Inventory inventory,
+      required String newLeadTime}) {
+    return _inventoryRepository.reviewAndSubmitStock(
+        formKey: formKey,
+        uid: uid,
+        item: item,
+        openingStock: openingStock,
+        costPrice: costPrice,
+        salePrice: salePrice,
+        expirationWarning: expirationWarning,
+        supplier: supplier,
+        stockLocation: stockLocation,
+        expirationDate: expirationDate,
+        batchNumber: batchNumber,
+        purchaseDate: purchaseDate,
+        inventory: inventory,
+        newLeadTime: newLeadTime);
+  }
+
+  Future<void> updateInventoryStatisticsOnStockAdd(
+      {required String uid,
+      required String itemID,
+      required Inventory inventory,
+      required double newLeadTime,
+      required double stockLevel,
+      required double costPrice}) {
+    return _inventoryRepository.updateInventoryStatisticsOnStockAdd(
+        uid: uid,
+        itemID: itemID,
+        inventory: inventory,
+        newLeadTime: newLeadTime,
+        stockLevel: stockLevel,
+        costPrice: costPrice);
+  }
+
+  Stream<Inventory> streamInventory(String uid, String itemID) {
+    return _inventoryRepository.streamInventory(uid: uid, itemID: itemID);
+  }
+
+  double getAdjustedStockLevelForMovement(
+      {required double currentStockLevel, required double adjustment}) {
+    return _inventoryRepository.getAdjustedStockLevelForMovement(
+        currentStockLevel: currentStockLevel, adjustment: adjustment);
+  }
+
+  Future<void> moveInventoryStock(
+      {required String uid,
+      required Stock currentStock,
+      required Stock movedStock}) {
+    return _inventoryRepository.moveInventoryStock(
+        uid: uid, currentStock: currentStock, movedStock: movedStock);
+  }
+
+  reviewAndMoveInventory(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required StockLocation? newStockLocation,
+      required String movedStockLevel,
+      required Stock currentStock}) {
+    return _inventoryRepository.reviewAndMoveInventory(
+        formKey: formKey,
+        uid: uid,
+        newStockLocation: newStockLocation,
+        movedStockLevel: movedStockLevel,
+        currentStock: currentStock);
+  }
+
+  Stream<List<InventoryTransaction>> streamInventoryTransactionList(
+      {required String uid, required Inventory inventory}) {
+    return _inventoryRepository.streamInventoryTransactionList(
+        uid: uid, inventory: inventory);
+  }
+
+  Future<void> inventoryStockLevelAdjustment(
+      {required String uid,
+      required Stock stock,
+      required double adjustedStockLevel,
+      required String reason}) {
+    return _inventoryRepository.inventoryStockLevelAdjustment(
+        uid: uid,
+        stock: stock,
+        adjustedStockLevel: adjustedStockLevel,
+        reason: reason);
+  }
+
+  Future<void> costPriceAdjustment(
+      {required String uid,
+      required Stock stock,
+      required double adjustedCostPrice,
+      required String reason}) {
+    return _inventoryRepository.costPriceAdjustment(
+        uid: uid,
+        stock: stock,
+        adjustedCostPrice: adjustedCostPrice,
+        reason: reason);
+  }
+
+  Future<void> salePriceAdjustment(
+      {required String uid,
+      required Stock stock,
+      required double adjustedSalePrice,
+      required String reason}) {
+    return _inventoryRepository.salePriceAdjustment(
+        uid: uid,
+        stock: stock,
+        adjustedSalePrice: adjustedSalePrice,
+        reason: reason);
+  }
+
+  reviewAndAdjustStockLevel(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedStockLevel,
+      required String reason}) {
+    return _inventoryRepository.reviewAndAdjustStockLevel(
+        formKey: formKey,
+        uid: uid,
+        stock: stock,
+        adjustedStockLevel: adjustedStockLevel,
+        reason: reason);
   }
 }
 
@@ -761,6 +934,25 @@ class DateTimeController {
         firstDate: firstDate,
         lastDate: lastDate);
   }
+
+  String formatDateTimeToYMd({required DateTime dateTime}) {
+    return _dateTimeRepository.formatDateTimeToYMd(dateTime: dateTime);
+  }
+
+  ExpirationState getExpirationState(
+      DateTime expirationDate, double expirationWarning) {
+    return _dateTimeRepository.getExpirationState(
+        expirationDate: expirationDate, expirationWarning: expirationWarning);
+  }
+
+  int getDaysToExpiration({required DateTime expirationDate}) {
+    return _dateTimeRepository.getDaysToExpiration(
+        expirationDate: expirationDate);
+  }
+
+  String formatDateTimeToYMdjm({required DateTime dateTime}) {
+    return _dateTimeRepository.formatDateTimeToYMdjm(dateTime: dateTime);
+  }
 }
 
 final PerishabilityController perishabilityController =
@@ -774,6 +966,11 @@ class PerishabilityController {
     return _perishabilityRepository.enableExpirationDateInput(
         perishability: perishability);
   }
+
+  Perishability getPerishabilityState({required String perishabilityString}) {
+    return _perishabilityRepository.getPerishabilityState(
+        perishabilityString: perishabilityString);
+  }
 }
 
 final PluralizationController pluralizationController =
@@ -785,5 +982,87 @@ class PluralizationController {
 
   String pluralize({required String noun, required num count}) {
     return _pluralizationRepository.pluralize(noun: noun, count: count);
+  }
+}
+
+final CurrencyController currencyController = CurrencyController();
+
+class CurrencyController {
+  final CurrencyRepository _currencyRepository = CurrencyRepository(Services());
+
+  String formatAsPhilippineCurrency({required num amount}) {
+    return _currencyRepository.formatAsPhilippineCurrency(amount: amount);
+  }
+}
+
+final StatisticsController statisticsController = StatisticsController();
+
+class StatisticsController {
+  final StatisticsRepository _statisticsRepository =
+      StatisticsRepository(Services());
+
+  double getInventoryValue(
+      {required double stockLevel, required double costPrice}) {
+    return _statisticsRepository.getInventoryValue(
+        stockLevel: stockLevel, costPrice: costPrice);
+  }
+
+  double getMaximumLeadTime(
+      {required double oldMaximumLeadTime, required double newLeadTime}) {
+    return _statisticsRepository.getMaximumLeadTime(
+        oldMaximumLeadTime: oldMaximumLeadTime, newLeadTime: newLeadTime);
+  }
+
+  double getAverageLeadTime(
+      {required double oldAverageLeadTime, required newLeadTime}) {
+    return _statisticsRepository.getAverageLeadTime(
+        oldAverageLeadTime: oldAverageLeadTime, newLeadTime: newLeadTime);
+  }
+
+  double getSafetyStockLevel(
+      {required double maximumLeadTime,
+      required double maximumDailyDemand,
+      required double averageDailyDemand,
+      required double averageLeadTime}) {
+    return _statisticsRepository.getSafetyStockLevel(
+        maximumLeadTime: maximumLeadTime,
+        maximumDailyDemand: maximumDailyDemand,
+        averageDailyDemand: averageDailyDemand,
+        averageLeadTime: averageLeadTime);
+  }
+
+  double getReorderPoint(
+      {required double averageLeadTime,
+      required double averageDailyDemand,
+      required double safetyStockLevel}) {
+    return _statisticsRepository.getReorderPoint(
+        averageLeadTime: averageLeadTime,
+        averageDailyDemand: averageDailyDemand,
+        safetyStockLevel: safetyStockLevel);
+  }
+
+  Map<String, dynamic> getInventoryStatisticsOnStockAdd(
+      {required Inventory inventory,
+      required double newLeadTime,
+      required double stockLevel,
+      required double costPrice}) {
+    return _statisticsRepository.getInventoryStatisticsOnStockAdd(
+        inventory: inventory,
+        newLeadTime: newLeadTime,
+        stockLevel: stockLevel,
+        costPrice: costPrice);
+  }
+}
+
+final ValidatorController validatorController = ValidatorController();
+
+class ValidatorController {
+  final ValidatorRepository _validatorRepository =
+      ValidatorRepository(Services());
+
+  bool isPositiveDoubleBelowOrEqualToCount(
+      {required String input, required double maxCount}) {
+    return _validatorRepository.isPositiveDoubleBelowOrEqualToCount(
+        input: input, maxCount: maxCount);
   }
 }

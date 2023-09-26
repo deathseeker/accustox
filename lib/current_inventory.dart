@@ -53,14 +53,8 @@ class CurrentInventoryList extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     CurrentInventoryData data = currentInventoryList[index];
 
-                    Item item = Item.fromMap(data.inventory.item!);
-
                     return CurrentInventoryItemCard(
-                      itemName: item.itemName!,
-                      sku: item.sku!,
-                      stockLevel: data.inventory.stockLevel!,
-                      stockLevelState: data.stockLevelState,
-                      unit: item.unitOfMeasurement!,
+                      currentInventoryData: data,
                     );
                   },
                   itemCount: currentInventoryList.length,

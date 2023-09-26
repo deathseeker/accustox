@@ -402,6 +402,45 @@ class DatabaseService {
     return categories;
   }
 
+  Future<void> addInventoryStock(String uid, String itemID, Stock stock,
+      Inventory inventory, double newLeadTime) async {
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID);
+
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(stock.stockID);
+
+    var inventoryTransactionID = itemController.getItemID();
+
+    InventoryTransaction inventoryTransaction = InventoryTransaction(
+        inventoryTransactionID: inventoryTransactionID,
+        transactionType: 'Added Stock',
+        quantityChange: stock.stockLevel!,
+        transactionMadeOn: DateTime.now(),
+        reason: '--',
+        stock: stock.toFirestore());
+
+    DocumentReference inventoryTransactionReference =
+        inventoryReference.collection('History').doc(inventoryTransactionID);
+
+    Map<String, dynamic> data =
+        statisticsController.getInventoryStatisticsOnStockAdd(
+            inventory: inventory,
+            newLeadTime: newLeadTime,
+            stockLevel: stock.stockLevel!,
+            costPrice: stock.costPrice!);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.set(stockReference, stock.toFirestore());
+      transaction.update(inventoryReference, data);
+      transaction.set(
+          inventoryTransactionReference, inventoryTransaction.toFirestore());
+    });
+  }
+
   Future<void> addItem(
       String uid, Item item, Stock stock, Inventory inventory) async {
     DocumentReference documentReference = _firestore
@@ -419,6 +458,19 @@ class DatabaseService {
     DocumentReference stockReference =
         inventoryReference.collection('Stocks').doc(stock.stockID);
 
+    var inventoryTransactionID = itemController.getItemID();
+
+    DocumentReference inventoryHistoryReference =
+        inventoryReference.collection('History').doc(inventoryTransactionID);
+
+    InventoryTransaction inventoryTransaction = InventoryTransaction(
+        inventoryTransactionID: inventoryTransactionID,
+        transactionType: 'Added New Item',
+        quantityChange: stock.stockLevel!,
+        transactionMadeOn: DateTime.now(),
+        reason: '--',
+        stock: stock.toFirestore());
+
     await _firestore.runTransaction((transaction) async {
       transaction.update(documentReference, {
         'itemList': FieldValue.arrayUnion([item.toFirestore()])
@@ -427,6 +479,9 @@ class DatabaseService {
       transaction.set(inventoryReference, inventory.toFirestore());
 
       transaction.set(stockReference, stock.toFirestore());
+
+      transaction.set(
+          inventoryHistoryReference, inventoryTransaction.toFirestore());
     });
   }
 
@@ -492,6 +547,19 @@ class DatabaseService {
         .map((doc) => ItemDocument.fromFirestore(doc))
         .map((itemDocument) =>
             itemDocument.itemList!.map((e) => Item.fromMap(e)).toList());
+  }
+
+  Stream<List<Stock>> streamStockList(String uid, String itemID) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID)
+        .collection('Stocks')
+        .orderBy('inventoryCreatedOn', descending: false)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Stock.fromFirestore(doc)).toList());
   }
 
   Stream<List<Item>> getFilteredItemsStreamByCategory(
@@ -760,7 +828,17 @@ class DatabaseService {
         .map((doc) => InventorySummary.fromFirestore(doc));
   }
 
-  Stream<List<Inventory>> streamInventory(String uid) {
+  Stream<Inventory> streamInventory(String uid, String itemID) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID)
+        .snapshots()
+        .map((doc) => Inventory.fromFirestore(doc));
+  }
+
+  Stream<List<Inventory>> streamInventoryList(String uid) {
     return _firestore
         .collection('Users')
         .doc(uid)
@@ -781,5 +859,274 @@ class DatabaseService {
         .map((stockLocationDocument) => stockLocationDocument.stockLocationList!
             .map((e) => StockLocation.fromMap(e))
             .toList());
+  }
+
+  Future<void> updateInventoryStatisticsOnStockAdd(
+      String uid,
+      String itemID,
+      Inventory inventory,
+      double newLeadTime,
+      double stockLevel,
+      double costPrice) async {
+    var oldMaximumLeadTime = inventory.maximumLeadTime;
+    var oldAverageLeadTime = inventory.averageLeadTime;
+    var maximumDailyDemand = inventory.maximumLeadTime;
+    var averageDailyDemand = inventory.averageDailyDemand;
+
+    double? maximumLeadTime = statisticsController.getMaximumLeadTime(
+        oldMaximumLeadTime: oldMaximumLeadTime!, newLeadTime: newLeadTime);
+    double? averageLeadTime = statisticsController.getAverageLeadTime(
+        oldAverageLeadTime: oldAverageLeadTime!, newLeadTime: newLeadTime);
+    double? newInventory = statisticsController.getInventoryValue(
+        stockLevel: stockLevel, costPrice: costPrice);
+    double? newStockLevel = stockLevel;
+    double? safetyStockLevel = statisticsController.getSafetyStockLevel(
+        maximumLeadTime: maximumLeadTime,
+        maximumDailyDemand: maximumDailyDemand!,
+        averageDailyDemand: averageDailyDemand!,
+        averageLeadTime: averageLeadTime);
+    double? reorderPoint = statisticsController.getReorderPoint(
+        averageLeadTime: averageLeadTime,
+        averageDailyDemand: averageDailyDemand,
+        safetyStockLevel: safetyStockLevel);
+
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID);
+
+    Map<String, dynamic> data = {
+      'maximumLeadTime': maximumLeadTime,
+      'averageLeadTime': averageLeadTime,
+      'currentInventory': FieldValue.increment(newInventory),
+      'stockLevel': FieldValue.increment(newStockLevel),
+      'safetyStockLevel': safetyStockLevel,
+      'reorderPoint': reorderPoint,
+    };
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(documentReference, data);
+    });
+  }
+
+  Future<void> moveInventoryStock(
+      String uid, Stock currentStock, Stock movedStock) async {
+    DocumentReference currentStockReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(currentStock.item?['itemID'])
+        .collection('Stocks')
+        .doc(currentStock.stockID);
+
+    DocumentReference movedStockReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(currentStock.item?['itemID'])
+        .collection('Stocks')
+        .doc(movedStock.stockID);
+
+    var currentStockTransactionID = itemController.getItemID();
+    var movedStockTransactionID = itemController.getItemID();
+
+    InventoryTransaction currentStockTransaction = InventoryTransaction(
+        inventoryTransactionID: currentStockTransactionID,
+        transactionType: 'Inventory Adjusted',
+        quantityChange: -movedStock.stockLevel!,
+        transactionMadeOn: DateTime.now(),
+        reason:
+            'Moved Stock From ${currentStock.stockLocation?['locationAddress']} To ${movedStock.stockLocation?['locationAddress']}',
+        stock: currentStock.toMap());
+
+    InventoryTransaction movedStockTransaction = InventoryTransaction(
+        inventoryTransactionID: movedStockTransactionID,
+        transactionType: 'Inventory Moved',
+        quantityChange: movedStock.stockLevel!,
+        transactionMadeOn: DateTime.now(),
+        reason: 'Stock From ${currentStock.stockLocation?['locationAddress']}',
+        stock: movedStock.toMap());
+
+    InventoryTransaction removedStockTransaction = InventoryTransaction(
+        inventoryTransactionID: currentStockTransactionID,
+        transactionType: 'Inventory Removed',
+        quantityChange: -movedStock.stockLevel!,
+        transactionMadeOn: DateTime.now(),
+        reason:
+            'Moved Stock From ${currentStock.stockLocation?['locationAddress']} To ${movedStock.stockLocation?['locationAddress']}',
+        stock: currentStock.toMap());
+
+    DocumentReference currentStockTransactionReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(currentStock.item?['itemID'])
+        .collection('History')
+        .doc(currentStockTransactionID);
+
+    DocumentReference movedStockTransactionReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(currentStock.item?['itemID'])
+        .collection('History')
+        .doc(movedStockTransactionID);
+
+    if (currentStock.stockLevel == movedStock.stockLevel) {
+      await _firestore.runTransaction((transaction) async {
+        transaction.set(movedStockReference, movedStock.toFirestore());
+        transaction.delete(currentStockReference);
+        transaction.set(movedStockTransactionReference,
+            movedStockTransaction.toFirestore());
+        transaction.set(currentStockTransactionReference,
+            removedStockTransaction.toFirestore());
+      });
+    } else {
+      var stockLevel = currentStock.stockLevel! - movedStock.stockLevel!;
+      await _firestore.runTransaction((transaction) async {
+        transaction.set(movedStockReference, movedStock.toFirestore());
+        transaction.update(currentStockReference, {'stockLevel': stockLevel});
+        transaction.set(currentStockTransactionReference,
+            currentStockTransaction.toFirestore());
+        transaction.set(movedStockTransactionReference,
+            movedStockTransaction.toFirestore());
+      });
+    }
+  }
+
+  Stream<List<InventoryTransaction>> streamInventoryTransactionList(
+      String uid, Inventory inventory) {
+    Item item = Item.fromMap(inventory.item!);
+
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(item.itemID)
+        .collection('History')
+        .orderBy('transactionMadeOn', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => InventoryTransaction.fromFirestore(doc))
+            .toList());
+  }
+
+  Future<void> inventoryStockLevelAdjustment(
+      String uid, Stock stock, double adjustedStockLevel, String reason) async {
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(stock.item?['itemID']);
+
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(stock.stockID);
+
+    var transactionID = itemController.getItemID();
+
+    DocumentReference transactionReference =
+        inventoryReference.collection('History').doc(transactionID);
+
+    var currentStockValue = stock.stockLevel! * stock.costPrice!;
+    var adjustedStockValue = adjustedStockLevel * stock.costPrice!;
+    var adjustedInventoryValue = adjustedStockValue - currentStockValue;
+    var stockLevelIncrement = adjustedStockLevel- stock.stockLevel!;
+
+    InventoryTransaction inventoryTransaction = InventoryTransaction(
+        inventoryTransactionID: transactionID,
+        transactionType: 'Stock Level Adjustment',
+        quantityChange: stockLevelIncrement,
+        transactionMadeOn: DateTime.now(),
+        reason: reason,
+        stock: stock.toFirestore());
+
+    if (adjustedStockLevel == 0) {
+      await _firestore.runTransaction((transaction) async{
+        transaction.delete(stockReference);
+        transaction.update(inventoryReference, {
+          'stockLevel': FieldValue.increment(stockLevelIncrement),
+          'currentInventory': FieldValue.increment(adjustedInventoryValue)
+        });
+        transaction.set(
+            transactionReference, inventoryTransaction.toFirestore());
+      });
+    } else {
+      await _firestore.runTransaction((transaction) async {
+        transaction.update(stockReference, {'stockLevel': adjustedStockLevel});
+        transaction.update(inventoryReference, {
+          'stockLevel': FieldValue.increment(stockLevelIncrement),
+          'currentInventory': FieldValue.increment(adjustedInventoryValue)
+        });
+        transaction.set(
+            transactionReference, inventoryTransaction.toFirestore());
+      });
+    }
+  }
+
+  Future<void> costPriceAdjustment(
+      String uid, Stock stock, double adjustedCostPrice, String reason) async {
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(stock.item?['itemID']);
+
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(stock.stockID);
+
+    var transactionID = itemController.getItemID();
+
+    DocumentReference transactionReference =
+        inventoryReference.collection('History').doc(transactionID);
+
+    var currentStockValue = stock.stockLevel! * stock.costPrice!;
+    var adjustedStockValue = stock.stockLevel! * adjustedCostPrice;
+    var adjustedInventoryValue = adjustedStockValue - currentStockValue;
+
+    InventoryTransaction inventoryTransaction = InventoryTransaction(
+        inventoryTransactionID: transactionID,
+        transactionType: 'Cost Price Adjustment',
+        quantityChange: 0,
+        transactionMadeOn: DateTime.now(),
+        reason: reason,
+        stock: stock.toFirestore());
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(stockReference, {'costPrice': adjustedCostPrice});
+      transaction.update(inventoryReference,
+          {'currentInventory': FieldValue.increment(adjustedInventoryValue)});
+      transaction.set(transactionReference, inventoryTransaction.toFirestore());
+    });
+  }
+
+  Future<void> salePriceAdjustment(
+      String uid, Stock stock, double adjustedSalePrice, String reason) async {
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(stock.item?['itemID']);
+
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(stock.stockID);
+
+    var transactionID = itemController.getItemID();
+
+    DocumentReference transactionReference =
+        inventoryReference.collection('History').doc(transactionID);
+
+    InventoryTransaction inventoryTransaction = InventoryTransaction(
+        inventoryTransactionID: transactionID,
+        transactionType: 'Sale Price Adjustment',
+        quantityChange: 0,
+        transactionMadeOn: DateTime.now(),
+        reason: reason,
+        stock: stock.toFirestore());
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(stockReference, {'salePrice': adjustedSalePrice});
+      transaction.set(transactionReference, inventoryTransaction.toFirestore());
+    });
   }
 }

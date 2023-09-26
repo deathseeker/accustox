@@ -90,6 +90,15 @@ abstract class NavigationRepositoryInterface {
   navigateToNewItem();
 
   navigateToEditItem({required Item item});
+
+  navigateToCurrentInventoryDetails(
+      {required CurrentInventoryData currentInventoryData});
+
+  navigateToAddInventory({required Inventory inventory});
+
+  navigateToMoveInventory({required Stock stock});
+
+  navigateToAdjustInventory({required Stock stock});
 }
 
 abstract class DialogInterface {
@@ -207,28 +216,27 @@ abstract class ItemInterface {
   Future<void> updateItem(
       {required String uid, required Item oldItem, required Item newItem});
 
-  reviewAndSubmitItem(
-      {
-        required GlobalKey<FormState> formKey,
-        required ImageFile imageFile,
-        required String uid,
-        required ImageStorageUploadData imageStorageUploadData,
-        required Item item,
-        required WidgetRef ref,
-        required String openingStock,
-        required String costPrice,
-        required String salePrice,
-        required String expirationWarning,
-        required String averageDailyDemand,
-        required String maximumDailyDemand,
-        required String averageLeadTime,
-        required String maximumLeadTime,
-        required Supplier? supplier,
-        required StockLocation? stockLocation,
-        required DateTime expirationDate,
-        required String batchNumber,
-        required DateTime purchaseDate,
-      });
+  reviewAndSubmitItem({
+    required GlobalKey<FormState> formKey,
+    required ImageFile imageFile,
+    required String uid,
+    required ImageStorageUploadData imageStorageUploadData,
+    required Item item,
+    required WidgetRef ref,
+    required String openingStock,
+    required String costPrice,
+    required String salePrice,
+    required String expirationWarning,
+    required String averageDailyDemand,
+    required String maximumDailyDemand,
+    required String averageLeadTime,
+    required String maximumLeadTime,
+    required Supplier? supplier,
+    required StockLocation? stockLocation,
+    required DateTime expirationDate,
+    required String batchNumber,
+    required DateTime purchaseDate,
+  });
 
   reviewAndSubmitItemUpdate(
       {required GlobalKey<FormState> formKey,
@@ -356,7 +364,79 @@ abstract class InventoryInterface {
       required num safetyStockLevel,
       required num reorderPoint});
 
-  Stream<List<Inventory>> streamInventory({required String uid});
+  Stream<List<Inventory>> streamInventoryList({required String uid});
+
+  Stream<List<Stock>> streamStockList(
+      {required String uid, required String itemID});
+
+  Future<void> addInventoryStock(
+      {required String uid,
+      required String itemID,
+      required Stock stock,
+      required Inventory inventory,
+      required double newLeadTime});
+
+  reviewAndSubmitStock({
+    required GlobalKey<FormState> formKey,
+    required String uid,
+    required Item item,
+    required String openingStock,
+    required String costPrice,
+    required String salePrice,
+    required String expirationWarning,
+    required Supplier? supplier,
+    required StockLocation? stockLocation,
+    required DateTime expirationDate,
+    required String batchNumber,
+    required DateTime purchaseDate,
+    required Inventory inventory,
+    required String newLeadTime,
+  });
+
+  Future<void> updateInventoryStatisticsOnStockAdd(
+      {required String uid,
+      required String itemID,
+      required Inventory inventory,
+      required double newLeadTime,
+      required double stockLevel,
+      required double costPrice});
+
+  Stream<Inventory> streamInventory(
+      {required String uid, required String itemID});
+
+  double getAdjustedStockLevelForMovement(
+      {required double currentStockLevel, required double adjustment});
+
+  Future<void> moveInventoryStock(
+      {required String uid,
+      required Stock currentStock,
+      required Stock movedStock});
+
+  reviewAndMoveInventory(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required StockLocation? newStockLocation,
+      required String movedStockLevel,
+      required Stock currentStock});
+
+  Stream<List<InventoryTransaction>> streamInventoryTransactionList(
+      {required String uid, required Inventory inventory});
+
+  Future<void> inventoryStockLevelAdjustment(
+      {required String uid, required Stock stock, required double adjustedStockLevel, required String reason});
+
+  Future<void> costPriceAdjustment(
+      {required String uid, required Stock stock, required double adjustedCostPrice, required String reason});
+
+  Future<void> salePriceAdjustment(
+      {required String uid, required Stock stock, required double adjustedSalePrice, required String reason});
+
+  reviewAndAdjustStockLevel(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedStockLevel,
+      required String reason});
 }
 
 abstract class DateTimeInterface {
@@ -369,12 +449,60 @@ abstract class DateTimeInterface {
       required DateTime initialDate,
       required DateTime firstDate,
       required DateTime lastDate});
+
+  String formatDateTimeToYMd({required DateTime dateTime});
+
+  ExpirationState getExpirationState(
+      {required DateTime expirationDate, required double expirationWarning});
+
+  int getDaysToExpiration({required DateTime expirationDate});
+
+  String formatDateTimeToYMdjm({required DateTime dateTime});
 }
 
 abstract class PerishabilityInterface {
   bool enableExpirationDateInput({required Perishability perishability});
+
+  Perishability getPerishabilityState({required String perishabilityString});
 }
 
 abstract class PluralizationInterface {
   String pluralize({required String noun, required num count});
+}
+
+abstract class CurrencyInterface {
+  String formatAsPhilippineCurrency({required num amount});
+}
+
+abstract class StatisticsInterface {
+  double getInventoryValue(
+      {required double stockLevel, required double costPrice});
+
+  double getMaximumLeadTime(
+      {required double oldMaximumLeadTime, required double newLeadTime});
+
+  double getAverageLeadTime(
+      {required double oldAverageLeadTime, required newLeadTime});
+
+  double getSafetyStockLevel(
+      {required double maximumLeadTime,
+      required double maximumDailyDemand,
+      required double averageDailyDemand,
+      required double averageLeadTime});
+
+  double getReorderPoint(
+      {required double averageLeadTime,
+      required double averageDailyDemand,
+      required double safetyStockLevel});
+
+  Map<String, dynamic> getInventoryStatisticsOnStockAdd(
+      {required Inventory inventory,
+      required double newLeadTime,
+      required double stockLevel,
+      required double costPrice});
+}
+
+abstract class ValidatorInterface {
+  bool isPositiveDoubleBelowOrEqualToCount(
+      {required String input, required double maxCount});
 }

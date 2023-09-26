@@ -211,6 +211,27 @@ class NavigationRepository implements NavigationRepositoryInterface {
   navigateToEditItem({required Item item}) {
     return _services.navigateToEditItem(item);
   }
+
+  @override
+  navigateToCurrentInventoryDetails(
+      {required CurrentInventoryData currentInventoryData}) {
+    return _services.navigateToCurrentInventoryDetails(currentInventoryData);
+  }
+
+  @override
+  navigateToAddInventory({required Inventory inventory}) {
+    return _services.navigateToAddInventory(inventory);
+  }
+
+  @override
+  navigateToMoveInventory({required Stock stock}) {
+    return _services.navigateToMoveInventory(stock);
+  }
+
+  @override
+  navigateToAdjustInventory({required Stock stock}) {
+    return _services.navigateToAdjustInventory(stock);
+  }
 }
 
 class DialogRepository implements DialogInterface {
@@ -774,8 +795,146 @@ class InventoryRepository implements InventoryInterface {
   }
 
   @override
-  Stream<List<Inventory>> streamInventory({required String uid}) {
-    return _db.streamInventory(uid);
+  Stream<List<Inventory>> streamInventoryList({required String uid}) {
+    return _db.streamInventoryList(uid);
+  }
+
+  @override
+  Stream<List<Stock>> streamStockList(
+      {required String uid, required String itemID}) {
+    return _db.streamStockList(uid, itemID);
+  }
+
+  @override
+  Future<void> addInventoryStock(
+      {required String uid,
+      required String itemID,
+      required Stock stock,
+      required Inventory inventory,
+      required double newLeadTime}) {
+    return _db.addInventoryStock(uid, itemID, stock, inventory, newLeadTime);
+  }
+
+  @override
+  reviewAndSubmitStock(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Item item,
+      required String openingStock,
+      required String costPrice,
+      required String salePrice,
+      required String expirationWarning,
+      required Supplier? supplier,
+      required StockLocation? stockLocation,
+      required DateTime expirationDate,
+      required String batchNumber,
+      required DateTime purchaseDate,
+      required Inventory inventory,
+      required String newLeadTime}) {
+    return _services.reviewAndSubmitStock(
+        formKey,
+        uid,
+        item,
+        openingStock,
+        costPrice,
+        salePrice,
+        expirationWarning,
+        supplier,
+        stockLocation,
+        expirationDate,
+        batchNumber,
+        purchaseDate,
+        inventory,
+        newLeadTime);
+  }
+
+  @override
+  Future<void> updateInventoryStatisticsOnStockAdd(
+      {required String uid,
+      required String itemID,
+      required Inventory inventory,
+      required double newLeadTime,
+      required double stockLevel,
+      required double costPrice}) {
+    return _db.updateInventoryStatisticsOnStockAdd(
+        uid, itemID, inventory, newLeadTime, stockLevel, costPrice);
+  }
+
+  @override
+  Stream<Inventory> streamInventory(
+      {required String uid, required String itemID}) {
+    return _db.streamInventory(uid, itemID);
+  }
+
+  @override
+  double getAdjustedStockLevelForMovement(
+      {required double currentStockLevel, required double adjustment}) {
+    return _services.getAdjustedStockLevelForMovement(
+        currentStockLevel, adjustment);
+  }
+
+  @override
+  Future<void> moveInventoryStock(
+      {required String uid,
+      required Stock currentStock,
+      required Stock movedStock}) {
+    return _db.moveInventoryStock(uid, currentStock, movedStock);
+  }
+
+  @override
+  reviewAndMoveInventory(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required StockLocation? newStockLocation,
+      required String movedStockLevel,
+      required Stock currentStock}) {
+    return _services.reviewAndMoveInventory(
+        formKey, uid, newStockLocation, movedStockLevel, currentStock);
+  }
+
+  @override
+  Stream<List<InventoryTransaction>> streamInventoryTransactionList(
+      {required String uid, required Inventory inventory}) {
+    return _db.streamInventoryTransactionList(uid, inventory);
+  }
+
+  @override
+  Future<void> inventoryStockLevelAdjustment(
+      {required String uid,
+      required Stock stock,
+      required double adjustedStockLevel,
+      required String reason}) {
+    return _db.inventoryStockLevelAdjustment(
+        uid, stock, adjustedStockLevel, reason);
+  }
+
+  @override
+  Future<void> costPriceAdjustment(
+      {required String uid,
+      required Stock stock,
+      required double adjustedCostPrice,
+      required String reason}) {
+    return _db.costPriceAdjustment(uid, stock, adjustedCostPrice, reason);
+  }
+
+  @override
+  Future<void> salePriceAdjustment(
+      {required String uid,
+      required Stock stock,
+      required double adjustedSalePrice,
+      required String reason}) {
+    return _db.salePriceAdjustment(uid, stock, adjustedSalePrice, reason);
+  }
+
+  @override
+  reviewAndAdjustStockLevel(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedStockLevel,
+      required String reason}) {
+    return _services.reviewAndAdjustStockLevel(
+        formKey, uid, stock, adjustedStockLevel, reason);
   }
 }
 
@@ -802,6 +961,27 @@ class DateTimeRepository implements DateTimeInterface {
       required DateTime lastDate}) {
     return _services.selectDate(context, initialDate, firstDate, lastDate);
   }
+
+  @override
+  String formatDateTimeToYMd({required DateTime dateTime}) {
+    return _services.formatDateTimeToYMd(dateTime);
+  }
+
+  @override
+  ExpirationState getExpirationState(
+      {required DateTime expirationDate, required double expirationWarning}) {
+    return _services.getExpirationState(expirationDate, expirationWarning);
+  }
+
+  @override
+  int getDaysToExpiration({required DateTime expirationDate}) {
+    return _services.getDaysToExpiration(expirationDate);
+  }
+
+  @override
+  String formatDateTimeToYMdjm({required DateTime dateTime}) {
+    return _services.formatDateTimeToYMdjm(dateTime);
+  }
 }
 
 class PerishabilityRepository implements PerishabilityInterface {
@@ -813,6 +993,12 @@ class PerishabilityRepository implements PerishabilityInterface {
   bool enableExpirationDateInput({required Perishability perishability}) {
     return _services.enableExpirationDateInput(perishability);
   }
+
+  @override
+  Perishability getPerishabilityState({required String perishabilityString}) {
+    return _services.getPerishabilityState(
+        perishabilityString: perishabilityString);
+  }
 }
 
 class PluralizationRepository implements PluralizationInterface {
@@ -823,5 +1009,81 @@ class PluralizationRepository implements PluralizationInterface {
   @override
   String pluralize({required String noun, required num count}) {
     return _services.pluralize(noun, count);
+  }
+}
+
+class CurrencyRepository implements CurrencyInterface {
+  final Services _services;
+
+  CurrencyRepository(this._services);
+
+  @override
+  String formatAsPhilippineCurrency({required num amount}) {
+    return _services.formatAsPhilippineCurrency(amount);
+  }
+}
+
+class StatisticsRepository implements StatisticsInterface {
+  final Services _services;
+
+  StatisticsRepository(this._services);
+
+  @override
+  double getAverageLeadTime(
+      {required double oldAverageLeadTime, required newLeadTime}) {
+    return _services.getAverageLeadTime(oldAverageLeadTime, newLeadTime);
+  }
+
+  @override
+  double getInventoryValue(
+      {required double stockLevel, required double costPrice}) {
+    return _services.getInventoryValue(stockLevel, costPrice);
+  }
+
+  @override
+  double getMaximumLeadTime(
+      {required double oldMaximumLeadTime, required double newLeadTime}) {
+    return _services.getMaximumLeadTime(oldMaximumLeadTime, newLeadTime);
+  }
+
+  @override
+  double getReorderPoint(
+      {required double averageLeadTime,
+      required double averageDailyDemand,
+      required double safetyStockLevel}) {
+    return _services.getReorderPoint(
+        averageLeadTime, averageDailyDemand, safetyStockLevel);
+  }
+
+  @override
+  double getSafetyStockLevel(
+      {required double maximumLeadTime,
+      required double maximumDailyDemand,
+      required double averageDailyDemand,
+      required double averageLeadTime}) {
+    return _services.getSafetyStockLevel(maximumLeadTime, maximumDailyDemand,
+        averageDailyDemand, averageLeadTime);
+  }
+
+  @override
+  Map<String, dynamic> getInventoryStatisticsOnStockAdd(
+      {required Inventory inventory,
+      required double newLeadTime,
+      required double stockLevel,
+      required double costPrice}) {
+    return _services.getInventoryStatisticsOnStockAdd(
+        inventory, newLeadTime, stockLevel, costPrice);
+  }
+}
+
+class ValidatorRepository implements ValidatorInterface {
+  final Services _services;
+
+  ValidatorRepository(this._services);
+
+  @override
+  bool isPositiveDoubleBelowOrEqualToCount(
+      {required String input, required double maxCount}) {
+    return _services.isPositiveDoubleBelowOrEqualToCount(input, maxCount);
   }
 }

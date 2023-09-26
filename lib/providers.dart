@@ -78,6 +78,7 @@ final streamLocationDataListProvider = StreamProvider.autoDispose((ref) {
   String uid = user.asData!.value!.uid;
   return stockLocationController.streamLocationDataList(uid: uid);
 });
+
 final inventoryLocationTypeProvider = StateProvider<InventoryLocationType>(
   (ref) => InventoryLocationType.warehouse,
 );
@@ -96,6 +97,13 @@ StreamProvider<List<StockLocation>> streamLocationListProvider =
 final streamSubLocationListProvider =
     StreamProvider.autoDispose.family<List<StockLocation>, String>((ref, path) {
   return stockLocationController.streamSubLocationDataList(path: path);
+});
+
+final streamStockListProvider =
+    StreamProvider.autoDispose.family<List<Stock>, String>((ref, itemID) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return inventoryController.streamStockList(uid: uid, itemID: itemID);
 });
 
 StreamProvider<List<Supplier>> streamSupplierListProvider =
@@ -118,10 +126,17 @@ final streamCurrentItemListProvider = StreamProvider.autoDispose((ref) {
   return itemController.streamCurrentItemList(uid: uid);
 });
 
-final streamInventoryProvider = StreamProvider.autoDispose((ref) {
+final streamInventoryListProvider = StreamProvider.autoDispose((ref) {
   final user = ref.watch(_userProvider);
   String uid = user.asData!.value!.uid;
-  return inventoryController.streamInventory(uid: uid);
+  return inventoryController.streamInventoryList(uid: uid);
+});
+
+final streamInventoryProvider =
+    StreamProvider.autoDispose.family<Inventory, String>((ref, itemID) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return inventoryController.streamInventory(uid, itemID);
 });
 
 final streamInventorySummaryProvider =
@@ -129,6 +144,15 @@ final streamInventorySummaryProvider =
   final user = ref.watch(_userProvider);
   String uid = user.asData!.value!.uid;
   return inventoryController.streamInventorySummary(uid: uid, itemID: itemID);
+});
+
+final streamTransactionListProvider = StreamProvider.autoDispose
+    .family<List<InventoryTransaction>, Inventory>((ref, inventory) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+
+  return inventoryController.streamInventoryTransactionList(
+      uid: uid, inventory: inventory);
 });
 
 final asyncCategorySelectionDataProvider = AsyncNotifierProvider<
