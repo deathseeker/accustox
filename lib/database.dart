@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
-import 'package:accustox/color_scheme.dart';
-import 'package:accustox/controllers.dart';
+import 'color_scheme.dart';
+import 'controllers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -46,6 +46,10 @@ class DatabaseService {
         merchantRef.collection('InventoryData').doc('Suppliers');
     final DocumentReference customersRef =
         merchantRef.collection('BusinessData').doc('Customers');
+    final DocumentReference purchaseOrderNumberRef =
+        merchantRef.collection('BusinessData').doc('PurchaseOrderNumber');
+    final DocumentReference salesOrderNumberRef =
+        merchantRef.collection('BusinessData').doc('SalesOrderNumber');
 
     await _firestore.runTransaction((transaction) async {
       transaction.set(merchantRef, userProfile.toFirestore());
@@ -55,6 +59,8 @@ class DatabaseService {
       transaction.set(locationsRef, {'stockLocationList': []});
       transaction.set(suppliersRef, {'suppliersList': []});
       transaction.set(customersRef, {'customerList': []});
+      transaction.set(purchaseOrderNumberRef, {'purchaseOrderNumber': 0});
+      transaction.set(salesOrderNumberRef, {'salesOrderNumber': 0});
     });
   }
 
@@ -581,7 +587,7 @@ class DatabaseService {
                 (item.categoryTags as List<Map<dynamic, dynamic>>)
                     .any((category) => category['categoryID'] == categoryID))
             .toList();
-      } catch (e, st) {
+      } catch (e) {
         return <Item>[];
       }
     });
@@ -718,7 +724,6 @@ class DatabaseService {
         source: isSourceCamera ? ImageSource.camera : ImageSource.gallery);
     CroppedFile? croppedFile = await cropImage(xFile!, isCropStyleCircle);
     File file = File(croppedFile.path);
-    final bytes = file.readAsBytesSync().lengthInBytes;
     return file;
   }
 
@@ -836,6 +841,17 @@ class DatabaseService {
         .doc(itemID)
         .snapshots()
         .map((doc) => Inventory.fromFirestore(doc));
+  }
+
+  Stream<List<PurchaseOrder>> streamIncomingInventoryList(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PurchaseOrder.fromFirestore(doc))
+            .toList());
   }
 
   Stream<List<Inventory>> streamInventoryList(String uid) {
@@ -1031,7 +1047,7 @@ class DatabaseService {
     var currentStockValue = stock.stockLevel! * stock.costPrice!;
     var adjustedStockValue = adjustedStockLevel * stock.costPrice!;
     var adjustedInventoryValue = adjustedStockValue - currentStockValue;
-    var stockLevelIncrement = adjustedStockLevel- stock.stockLevel!;
+    var stockLevelIncrement = adjustedStockLevel - stock.stockLevel!;
 
     InventoryTransaction inventoryTransaction = InventoryTransaction(
         inventoryTransactionID: transactionID,
@@ -1042,7 +1058,7 @@ class DatabaseService {
         stock: stock.toFirestore());
 
     if (adjustedStockLevel == 0) {
-      await _firestore.runTransaction((transaction) async{
+      await _firestore.runTransaction((transaction) async {
         transaction.delete(stockReference);
         transaction.update(inventoryReference, {
           'stockLevel': FieldValue.increment(stockLevelIncrement),
@@ -1127,6 +1143,75 @@ class DatabaseService {
     await _firestore.runTransaction((transaction) async {
       transaction.update(stockReference, {'salePrice': adjustedSalePrice});
       transaction.set(transactionReference, inventoryTransaction.toFirestore());
+    });
+  }
+
+  Future<void> addPurchaseOrder(String uid, PurchaseOrder purchaseOrder) async {
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    DocumentReference purchaseOrderIDReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('BusinessData')
+        .doc('PurchaseOrderNumber');
+
+    await _firestore.runTransaction((transaction) async {
+      var purchaseOrderIDDoc = await transaction.get(purchaseOrderIDReference);
+
+      int purchaseOrderNumber =
+          purchaseOrderIDDoc.get('purchaseOrderNumber') + 1;
+
+      String purchaseOrderNumberToFirestore = purchaseOrderController
+          .createPurchaseOrderNumber(a: purchaseOrderNumber);
+
+      purchaseOrder.update(purchaseOrderNumber: purchaseOrderNumberToFirestore);
+
+      transaction.update(purchaseOrderIDReference,
+          {'purchaseOrderNumber': FieldValue.increment(1)});
+
+      transaction.set(purchaseOrderReference, purchaseOrder.toFirestore());
+    });
+  }
+
+  Stream<PurchaseOrder> streamPurchaseOrder(
+      String uid, String purchaseOrderID) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrderID)
+        .snapshots()
+        .map((doc) => PurchaseOrder.fromFirestore(doc));
+  }
+
+  Future<void> updateOrderPlacedStatus(
+      String uid, PurchaseOrder purchaseOrder, bool orderPlaced) async {
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(purchaseOrderReference, {'orderPlaced': orderPlaced});
+    });
+  }
+
+  Future<void> updateOrderConfirmedStatus(
+      String uid, PurchaseOrder purchaseOrder, bool orderConfirmed) async {
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction
+          .update(purchaseOrderReference, {'orderConfirmed': orderConfirmed});
     });
   }
 }

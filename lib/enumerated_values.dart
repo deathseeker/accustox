@@ -26,9 +26,13 @@ enum StockLevelState {
 }
 
 enum IncomingInventoryState {
-  forPlacement,
-  forConfirmation,
-  forDelivery,
+  forPlacement('For Placement'),
+  forConfirmation('For Confirmation'),
+  forDelivery('For Delivery');
+
+  final String label;
+
+  const IncomingInventoryState(this.label);
 }
 
 enum InventoryAdjustmentReason {
@@ -203,6 +207,17 @@ enum CurrentInventoryFilter {
   final String label;
 
   const CurrentInventoryFilter(this.label);
+}
+
+enum IncomingInventoryFilter {
+  all('All'),
+  forPlacement('For Placement'),
+  forConfirmation('For Confirmation'),
+  forDelivery('For Delivery');
+
+  final String label;
+
+  const IncomingInventoryFilter(this.label);
 }
 
 enum ExpirationState {

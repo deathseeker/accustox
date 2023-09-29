@@ -198,6 +198,10 @@ class NavigationController {
     return _navigationRepository.navigateToNewItem();
   }
 
+  navigateToNewPurchaseOrder() {
+    return _navigationRepository.navigateToNewPurchaseOrder();
+  }
+
   navigateToEditItem({required Item item}) {
     return _navigationRepository.navigateToEditItem(item: item);
   }
@@ -218,6 +222,15 @@ class NavigationController {
 
   navigateToAdjustInventory({required Stock stock}) {
     return _navigationRepository.navigateToAdjustInventory(stock: stock);
+  }
+
+  navigateToAddItemToPurchaseOrder() {
+    return _navigationRepository.navigateToAddItemToPurchaseOrder();
+  }
+
+  navigateToPurchaseOrderDetails({required PurchaseOrder purchaseOrder}) {
+    return _navigationRepository.navigateToPurchaseOrderDetails(
+        purchaseOrder: purchaseOrder);
   }
 }
 
@@ -324,6 +337,22 @@ class DialogController {
   processRemoveSupplier({required String uid, required Supplier supplier}) {
     return _dialogRepository.processRemoveSupplier(
         uid: uid, supplier: supplier);
+  }
+
+  addPurchaseItemOrderDialog(
+      {required BuildContext context,
+      required Item item,
+      required WidgetRef ref}) {
+    return _dialogRepository.addPurchaseItemOrderDialog(
+        context: context, item: item, ref: ref);
+  }
+
+  editPurchaseItemOrderDialog(
+      {required BuildContext context,
+      required PurchaseOrderItem purchaseOrderItem,
+      required WidgetRef ref}) {
+    return _dialogRepository.editPurchaseItemOrderDialog(
+        context: context, purchaseOrderItem: purchaseOrderItem, ref: ref);
   }
 }
 
@@ -908,6 +937,34 @@ class InventoryController {
         adjustedStockLevel: adjustedStockLevel,
         reason: reason);
   }
+
+  reviewAndAdjustCostPrice(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedCostPrice,
+      required String reason}) {
+    return _inventoryRepository.reviewAndAdjustCostPrice(
+        formKey: formKey,
+        uid: uid,
+        stock: stock,
+        adjustedCostPrice: adjustedCostPrice,
+        reason: reason);
+  }
+
+  reviewAndAdjustSalePrice(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedSalePrice,
+      required String reason}) {
+    return _inventoryRepository.reviewAndAdjustSalePrice(
+        formKey: formKey,
+        uid: uid,
+        stock: stock,
+        adjustedSalePrice: adjustedSalePrice,
+        reason: reason);
+  }
 }
 
 final DateTimeController dateTimeController = DateTimeController();
@@ -993,6 +1050,11 @@ class CurrencyController {
   String formatAsPhilippineCurrency({required num amount}) {
     return _currencyRepository.formatAsPhilippineCurrency(amount: amount);
   }
+
+  String formatAsPhilippineCurrencyWithoutSymbol({required num amount}) {
+    return _currencyRepository.formatAsPhilippineCurrencyWithoutSymbol(
+        amount: amount);
+  }
 }
 
 final StatisticsController statisticsController = StatisticsController();
@@ -1064,5 +1126,55 @@ class ValidatorController {
       {required String input, required double maxCount}) {
     return _validatorRepository.isPositiveDoubleBelowOrEqualToCount(
         input: input, maxCount: maxCount);
+  }
+}
+
+final PurchaseOrderController purchaseOrderController =
+    PurchaseOrderController();
+
+class PurchaseOrderController {
+  final PurchaseOrderRepository _purchaseOrderRepository =
+      PurchaseOrderRepository(Services(), DatabaseService());
+
+  String createPurchaseOrderNumber({required int a}) {
+    return _purchaseOrderRepository.createPurchaseOrderNumber(a: a);
+  }
+
+  Future<void> addPurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder}) {
+    return _purchaseOrderRepository.addPurchaseOrder(
+        uid: uid, purchaseOrder: purchaseOrder);
+  }
+
+  reviewAndSubmitPurchaseOrder(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Supplier? supplier,
+      required String? deliveryAddress,
+      required DateTime? expectedDeliveryDate,
+      required List<PurchaseOrderItem>? purchaseOrderItemList}) {
+    return _purchaseOrderRepository.reviewAndSubmitPurchaseOrder(
+        formKey: formKey,
+        uid: uid,
+        supplier: supplier,
+        deliveryAddress: deliveryAddress,
+        expectedDeliveryDate: expectedDeliveryDate,
+        purchaseOrderItemList: purchaseOrderItemList);
+  }
+
+  Stream<List<PurchaseOrder>> streamIncomingInventoryList(
+      {required String uid}) {
+    return _purchaseOrderRepository.streamIncomingInventoryList(uid: uid);
+  }
+
+  getIncomingInventoryState(
+      {required bool orderPlaced, required bool orderConfirmed}) {
+    return _purchaseOrderRepository.getIncomingInventoryState(
+        orderPlaced: orderPlaced, orderConfirmed: orderConfirmed);
+  }
+
+  Stream<PurchaseOrder> streamPurchaseOrder(
+      {required String uid, required String purchaseOrderID}){
+    return _purchaseOrderRepository.streamPurchaseOrder(uid: uid, purchaseOrderID: purchaseOrderID);
   }
 }

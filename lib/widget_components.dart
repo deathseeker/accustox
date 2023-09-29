@@ -274,7 +274,7 @@ class _ReportingPeriodDropdownState extends State<ReportingPeriodDropdown> {
   }
 }
 
-class IncomingInventoryFilterChips extends StatefulWidget {
+class IncomingInventoryFilterChips extends ConsumerStatefulWidget {
   const IncomingInventoryFilterChips({super.key});
 
   @override
@@ -283,35 +283,31 @@ class IncomingInventoryFilterChips extends StatefulWidget {
 }
 
 class _IncomingInventoryFilterChipsState
-    extends State<IncomingInventoryFilterChips> {
-  List<String> filters = [
-    "All",
-    "For Placement",
-    "For Confirmation",
-    "For Delivery"
-  ];
-  String selectedFilter = "All"; // Default selected filter
+    extends ConsumerState<IncomingInventoryFilterChips> {
+  List<IncomingInventoryFilter> incomingInventoryFilterList =
+      IncomingInventoryFilter.values;
+  late IncomingInventoryFilter selectedFilter;
 
-  void _onFilterSelected(String filter) {
-    setState(() {
-      selectedFilter = filter;
-    });
-
-    // You can implement filtering logic here based on the selected filter.
-    // For now, let's print the selected filter.
-    print("Selected Filter: $selectedFilter");
+  @override
+  void initState() {
+    super.initState();
+    selectedFilter = ref.read(incomingInventoryFilterSelectionProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8.0, // Adjust the spacing between filter chips
-      children: filters.map((filter) {
+      children: incomingInventoryFilterList.map((filter) {
         return FilterChip(
-          label: Text(filter),
+          label: Text(filter.label),
           selected: selectedFilter == filter,
           onSelected: (isSelected) {
-            _onFilterSelected(filter);
+            setState(() {
+              selectedFilter = filter;
+            });
+            ref.read(incomingInventoryFilterSelectionProvider.notifier).state =
+                filter;
           },
         );
       }).toList(),
@@ -1209,24 +1205,24 @@ class AdjustmentDashboardCard extends StatelessWidget {
 class IncomingInventoryCard extends StatelessWidget {
   const IncomingInventoryCard(
       {super.key,
-      required this.supplierName,
-      required this.purchaseOrderNumber,
-      required this.estimatedTotalCost,
-      required this.deliveryAddress,
-      required this.expectedDeliveryDate,
-      required this.purchaseOrderItemList,
+      required this.purchaseOrder,
       required this.incomingInventoryState});
 
-  final String supplierName;
-  final String purchaseOrderNumber;
-  final String estimatedTotalCost;
-  final String deliveryAddress;
-  final String expectedDeliveryDate;
-  final List<PurchaseOrderItemListTileData> purchaseOrderItemList;
+  final PurchaseOrder purchaseOrder;
   final IncomingInventoryState incomingInventoryState;
 
   @override
   Widget build(BuildContext context) {
+    Supplier supplier = Supplier.fromMap(purchaseOrder.supplier);
+    var getEstimatedTotalCost = purchaseOrder.getTotalCost();
+    var estimatedTotalCost = currencyController.formatAsPhilippineCurrency(
+        amount: getEstimatedTotalCost);
+    var purchaseOrderNumber = purchaseOrder.purchaseOrderNumber!;
+    var deliveryAddress = purchaseOrder.deliveryAddress!;
+    var expectedDeliveryDate = dateTimeController.formatDateTimeToYMd(
+        dateTime: purchaseOrder.expectedDeliveryDate!);
+    var purchaseOrderItemList = purchaseOrder.getPurchaseOrderItemList();
+
     return Card(
       margin: const EdgeInsets.all(0.0),
       borderOnForeground: true,
@@ -1248,7 +1244,7 @@ class IncomingInventoryCard extends StatelessWidget {
                         runSpacing: 4.0,
                         children: [
                           InformationWithLabel(
-                              label: 'Supplier', data: supplierName),
+                              label: 'Supplier', data: supplier.supplierName),
                           InformationWithLabel(
                               label: 'Estimated Total Cost',
                               data: estimatedTotalCost),
@@ -1264,7 +1260,9 @@ class IncomingInventoryCard extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-                        onPressed: () {},
+                        onPressed: () =>
+                            navigationController.navigateToPurchaseOrderDetails(
+                                purchaseOrder: purchaseOrder),
                         child: const Icon(Icons.info_outline_rounded))
                   ],
                 ),
@@ -1593,23 +1591,26 @@ class SalesOrderItemListTile extends StatelessWidget {
   }
 }
 
-class PurchaseOrderItemListTileWithEditButton extends StatelessWidget {
+class PurchaseOrderItemListTileWithEditButton extends ConsumerWidget {
   const PurchaseOrderItemListTileWithEditButton(
-      {super.key,
-      required this.itemName,
-      required this.sku,
-      required this.quantity,
-      required this.estimatedPrice,
-      required this.subtotal});
+      {super.key, required this.purchaseOrderItem});
 
-  final String itemName;
-  final String sku;
-  final String quantity;
-  final String estimatedPrice;
-  final String subtotal;
+  final PurchaseOrderItem purchaseOrderItem;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    var quantity = purchaseOrderItem.quantity.toString();
+    var estimatedPrice =
+        currencyController.formatAsPhilippineCurrencyWithoutSymbol(
+            amount: purchaseOrderItem.estimatedPrice);
+    var subtotal = currencyController.formatAsPhilippineCurrencyWithoutSymbol(
+        amount: purchaseOrderItem.getEstimatedSubTotal());
+    var itemName = purchaseOrderItem.itemName!;
+    var sku = purchaseOrderItem.sku!;
+    var units = pluralizationController.pluralize(
+        noun: purchaseOrderItem.unitOfMeasurement!,
+        count: purchaseOrderItem.quantity);
+
     return Row(
       children: [
         Expanded(
@@ -1633,7 +1634,7 @@ class PurchaseOrderItemListTileWithEditButton extends StatelessWidget {
         Expanded(
             flex: 2,
             child: Text(
-              quantity,
+              "$quantity $units",
               textAlign: TextAlign.center,
               style: customTextStyle.bodyMedium
                   .copyWith(color: lightColorScheme.onSurface),
@@ -1657,7 +1658,14 @@ class PurchaseOrderItemListTileWithEditButton extends StatelessWidget {
                   .copyWith(color: lightColorScheme.onSurface),
               overflow: TextOverflow.ellipsis,
             )),
-        Flexible(flex: 1, child: LabelButton(onTap: () {}, label: 'Edit'))
+        Flexible(
+            flex: 1,
+            child: LabelButton(
+                onTap: () => dialogController.editPurchaseItemOrderDialog(
+                    context: context,
+                    purchaseOrderItem: purchaseOrderItem,
+                    ref: ref),
+                label: 'Edit'))
       ],
     );
   }
@@ -1690,7 +1698,7 @@ class LabelButton extends StatelessWidget {
 class PurchaseOrderItemList extends StatelessWidget {
   const PurchaseOrderItemList({super.key, required this.purchaseOrderItemList});
 
-  final List<PurchaseOrderItemListTileData> purchaseOrderItemList;
+  final List<PurchaseOrderItem> purchaseOrderItemList;
 
   @override
   Widget build(BuildContext context) {
@@ -1698,13 +1706,23 @@ class PurchaseOrderItemList extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
       itemBuilder: (context, index) {
-        PurchaseOrderItemListTileData data = purchaseOrderItemList[index];
+        PurchaseOrderItem data = purchaseOrderItemList[index];
+        var unit = pluralizationController.pluralize(
+            noun: data.unitOfMeasurement!, count: data.quantity);
+        var quantity = '${data.quantity.toString()} $unit';
+        var estimatedPrice =
+            currencyController.formatAsPhilippineCurrencyWithoutSymbol(
+                amount: data.estimatedPrice);
+        var getSubtotal = data.getEstimatedSubTotal();
+        var subtotal =
+            currencyController.formatAsPhilippineCurrency(amount: getSubtotal);
+
         return PurchaseOrderItemListTile(
-            itemName: data.itemName,
-            sku: data.sku,
-            quantity: data.quantity,
-            estimatedPrice: data.estimatedPrice,
-            subtotal: data.subtotal);
+            itemName: data.itemName!,
+            sku: data.sku!,
+            quantity: quantity,
+            estimatedPrice: estimatedPrice,
+            subtotal: subtotal);
       },
       itemCount: purchaseOrderItemList.length,
     );
@@ -1715,24 +1733,28 @@ class NewPurchaseOrderItemList extends StatelessWidget {
   const NewPurchaseOrderItemList(
       {super.key, required this.purchaseOrderItemList});
 
-  final List<PurchaseOrderItemListTileData> purchaseOrderItemList;
+  final List<PurchaseOrderItem> purchaseOrderItemList;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      itemBuilder: (context, index) {
-        PurchaseOrderItemListTileData data = purchaseOrderItemList[index];
-        return PurchaseOrderItemListTileWithEditButton(
-            itemName: data.itemName,
-            sku: data.sku,
-            quantity: data.quantity,
-            estimatedPrice: data.estimatedPrice,
-            subtotal: data.subtotal);
-      },
-      itemCount: purchaseOrderItemList.length,
-    );
+    return purchaseOrderItemList.isEmpty
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16.0),
+            child:
+                ErrorMessage(errorMessage: 'You currently have no orders...'),
+          )
+        : ListView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemBuilder: (context, index) {
+              PurchaseOrderItem data = purchaseOrderItemList[index];
+
+              return PurchaseOrderItemListTileWithEditButton(
+                purchaseOrderItem: data,
+              );
+            },
+            itemCount: purchaseOrderItemList.length,
+          );
   }
 }
 
@@ -1751,33 +1773,48 @@ class HeadlineSmall extends StatelessWidget {
   }
 }
 
-class PlaceOrderChip extends StatefulWidget {
-  const PlaceOrderChip({super.key, required this.placeOrderState});
+class PlaceOrderChip extends ConsumerStatefulWidget {
+  const PlaceOrderChip({super.key, required this.purchaseOrder});
 
-  final PlaceOrderState placeOrderState;
+  final PurchaseOrder purchaseOrder;
 
   @override
   _PlaceOrderChipState createState() => _PlaceOrderChipState();
 }
 
-class _PlaceOrderChipState extends State<PlaceOrderChip> {
+class _PlaceOrderChipState extends ConsumerState<PlaceOrderChip> {
+  late final PurchaseOrder purchaseOrder;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+    purchaseOrder = widget.purchaseOrder;
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    var streamPurchaseOrder =
+        ref.watch(streamPurchaseOrderProvider(purchaseOrder.purchaseOrderID!));
     Widget? actionChip;
 
-    switch (widget.placeOrderState) {
+    PlaceOrderState placeOrderState = streamPurchaseOrder.when(
+        data: (data) {
+          bool orderPlaced = data.orderPlaced!;
+          if (orderPlaced) {
+            return PlaceOrderState.orderPlaced;
+          } else {
+            return PlaceOrderState.orderNotPlaced;
+          }
+        },
+        error: (e, st) => PlaceOrderState.disabled,
+        loading: () => PlaceOrderState.loading);
+
+    switch (placeOrderState) {
       case PlaceOrderState.orderNotPlaced:
         actionChip = ActionChip(
           side: BorderSide(color: lightColorScheme.primary),
@@ -1830,33 +1867,52 @@ class _PlaceOrderChipState extends State<PlaceOrderChip> {
   }
 }
 
-class ConfirmOrderChip extends StatefulWidget {
-  const ConfirmOrderChip({super.key, required this.confirmOrderState});
+class ConfirmOrderChip extends ConsumerStatefulWidget {
+  const ConfirmOrderChip({super.key, required this.purchaseOrder});
 
-  final ConfirmOrderState confirmOrderState;
+  final PurchaseOrder purchaseOrder;
 
   @override
   _ConfirmOrderChipState createState() => _ConfirmOrderChipState();
 }
 
-class _ConfirmOrderChipState extends State<ConfirmOrderChip> {
+class _ConfirmOrderChipState extends ConsumerState<ConfirmOrderChip> {
+  late final PurchaseOrder purchaseOrder;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+    purchaseOrder = widget.purchaseOrder;
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    var streamPurchaseOrder =
+        ref.watch(streamPurchaseOrderProvider(purchaseOrder.purchaseOrderID!));
     Widget? actionChip;
 
-    switch (widget.confirmOrderState) {
+    ConfirmOrderState confirmOrderState = streamPurchaseOrder.when(
+        data: (data) {
+          var orderPlaced = data.orderPlaced!;
+          var orderConfirmed = data.orderConfirmed!;
+
+          if (!orderPlaced) {
+            return ConfirmOrderState.disabled;
+          } else if (orderPlaced && !orderConfirmed) {
+            return ConfirmOrderState.orderNotConfirmed;
+          } else {
+            return ConfirmOrderState.orderConfirmed;
+          }
+        },
+        error: (e, st) => ConfirmOrderState.disabled,
+        loading: () => ConfirmOrderState.loading);
+
+    switch (confirmOrderState) {
       case ConfirmOrderState.orderNotConfirmed:
         actionChip = ActionChip(
           side: BorderSide(color: lightColorScheme.primary),
@@ -1885,7 +1941,7 @@ class _ConfirmOrderChipState extends State<ConfirmOrderChip> {
             color: lightColorScheme.onTertiaryContainer,
           ),
           label: Text(
-            'Order Confirmed',
+            'For Delivery',
             style: TextStyle(color: lightColorScheme.onTertiaryContainer),
           ),
           backgroundColor: lightColorScheme.tertiaryContainer,
@@ -1986,24 +2042,17 @@ class _ConfirmDeliveryChipState extends State<ConfirmDeliveryChip> {
 }
 
 class PurchaseOrderStatus extends StatelessWidget {
-  const PurchaseOrderStatus(
-      {super.key,
-      required this.placeOrderState,
-      required this.confirmOrderState,
-      required this.deliveryState});
+  const PurchaseOrderStatus({super.key, required this.purchaseOrder});
 
-  final PlaceOrderState placeOrderState;
-  final ConfirmOrderState confirmOrderState;
-  final DeliveryState deliveryState;
+  final PurchaseOrder purchaseOrder;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8.0,
       children: [
-        PlaceOrderChip(placeOrderState: placeOrderState),
-        ConfirmOrderChip(confirmOrderState: confirmOrderState),
-        ConfirmDeliveryChip(deliveryState: deliveryState)
+        PlaceOrderChip(purchaseOrder: purchaseOrder),
+        ConfirmOrderChip(purchaseOrder: purchaseOrder)
       ],
     );
   }
@@ -2013,7 +2062,7 @@ class PurchaseOrderDetailsItemList extends StatelessWidget {
   const PurchaseOrderDetailsItemList(
       {super.key, required this.purchaseOrderItemList});
 
-  final List<PurchaseOrderItemListTileData> purchaseOrderItemList;
+  final List<PurchaseOrderItem> purchaseOrderItemList;
 
   @override
   Widget build(BuildContext context) {
@@ -2021,13 +2070,16 @@ class PurchaseOrderDetailsItemList extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
       itemBuilder: (context, index) {
-        PurchaseOrderItemListTileData data = purchaseOrderItemList[index];
+        PurchaseOrderItem data = purchaseOrderItemList[index];
+        var quantity = data.quantity.toString();
+        var estimatedPrice = data.estimatedPrice.toString();
+        var subtotal = data.getEstimatedSubTotal().toString();
         return PurchaseOrderItemListTile(
-            itemName: data.itemName,
-            sku: data.sku,
-            quantity: data.quantity,
-            estimatedPrice: data.estimatedPrice,
-            subtotal: data.subtotal);
+            itemName: data.itemName!,
+            sku: data.sku!,
+            quantity: quantity,
+            estimatedPrice: estimatedPrice,
+            subtotal: subtotal);
       },
       itemCount: purchaseOrderItemList.length,
     );
@@ -2723,6 +2775,60 @@ class _ProductFilterChipsState extends State<ProductFilterChips> {
           },
         );
       }).toList(),
+    );
+  }
+}
+
+class PurchaseOrderItemCard extends StatelessWidget {
+  final Item item;
+
+  const PurchaseOrderItemCard({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Padding(padding: EdgeInsets.only(left: 8.0)),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          item.sku!,
+                          style: customTextStyle.titleMedium
+                              .copyWith(color: lightColorScheme.onSurface),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          item.itemName!,
+                          style: customTextStyle.bodyMedium
+                              .copyWith(color: lightColorScheme.onSurface),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

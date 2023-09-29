@@ -1,9 +1,12 @@
 import 'package:accustox/current_inventory_details.dart';
+import 'package:accustox/default_values.dart';
 import 'package:accustox/edit_item.dart';
 import 'package:accustox/enumerated_values.dart';
 import 'package:accustox/move_inventory.dart';
 import 'package:accustox/new_adjustment.dart';
 import 'package:accustox/new_inventory_stock.dart';
+import 'package:accustox/purchase_order_details.dart';
+import 'package:accustox/text_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
@@ -219,6 +222,14 @@ class Services {
     return navigatorKey.currentState?.pushNamed('newItem');
   }
 
+  navigateToNewPurchaseOrder() {
+    return navigatorKey.currentState?.pushNamed('newPurchaseOrder');
+  }
+
+  navigateToAddItemToPurchaseOrder() {
+    return navigatorKey.currentState?.pushNamed('addItemToPurchaseOrder');
+  }
+
   navigateToCurrentInventoryDetails(CurrentInventoryData currentInventoryData) {
     return navigatorKey.currentState?.push(MaterialPageRoute(
         builder: (context) => CurrentInventoryDetails(
@@ -238,6 +249,12 @@ class Services {
   navigateToAdjustInventory(Stock stock) {
     return navigatorKey.currentState?.push(
         MaterialPageRoute(builder: (context) => NewAdjustment(stock: stock)));
+  }
+
+  navigateToPurchaseOrderDetails(PurchaseOrder purchaseOrder) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) =>
+            PurchaseOrderDetails(purchaseOrder: purchaseOrder)));
   }
 
   bool hasProfileChanged(
@@ -554,6 +571,256 @@ class Services {
   String getCustomerID() {
     String id = uuid.v4();
     return id;
+  }
+
+  addPurchaseItemOrderDialog(BuildContext context, Item item, WidgetRef ref) {
+    final TextEditingController quantityController = TextEditingController();
+    final TextEditingController estimatedPriceController =
+        TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final itemOrderNotifier =
+        ref.read(purchaseOrderCartNotifierProvider.notifier);
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Add Item Order'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Form(
+                    key: formKey,
+                    child: Column(
+                      children: [
+                        Text(
+                          '${item.sku} - ${item.itemName}',
+                          style: customTextStyle.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: quantityController,
+                            decoration: InputDecoration(
+                                border: const OutlineInputBorder(),
+                                labelText:
+                                    'Quantity (in ${item.unitOfMeasurement}s)'),
+                            keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.next,
+                            validator: (value) {
+                              if (value!.isEmpty) {
+                                return "Please enter the estimated unit price...";
+                              } else if (double.tryParse(value)! <= 0) {
+                                return 'Please enter a positive number greater than zero...';
+                              } else {
+                                return null;
+                              }
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: estimatedPriceController,
+                            decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Estimated Price/Unit (in Php)'),
+                            keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.done,
+                            validator: (value) {
+                              if (value!.isEmpty) {
+                                return "Please enter the estimated unit price...";
+                              } else if (double.tryParse(value)! <= 0) {
+                                return 'Please enter a positive number greater than zero...';
+                              } else {
+                                return null;
+                              }
+                            },
+                          ),
+                        ),
+                        ButtonBar(
+                          children: [
+                            TextButton(
+                                onPressed: () => navigationController
+                                    .navigateToPreviousPage(),
+                                child: const Text('Cancel')),
+                            FilledButton(
+                                onPressed: () {
+                                  var isValid =
+                                      formKey.currentState!.validate();
+
+                                  if (isValid) {
+                                    var quantity = double.tryParse(
+                                        quantityController.text);
+                                    var estimatedPrice = double.tryParse(
+                                        estimatedPriceController.text);
+                                    PurchaseOrderItem purchaseOrderItem =
+                                        PurchaseOrderItem.fromItem(item,
+                                            quantity: quantity!,
+                                            estimatedPrice: estimatedPrice!);
+
+                                    snackBarController.showLoadingSnackBar(
+                                        message:
+                                            'Adding item to purchase order...');
+
+                                    itemOrderNotifier
+                                        .addItem(purchaseOrderItem);
+
+                                    snackBarController.hideCurrentSnackBar();
+
+                                    snackBarController.showSnackBar(
+                                        'Item successfully added...');
+
+                                    navigationController
+                                        .navigateToPreviousPage();
+
+                                    navigationController
+                                        .navigateToPreviousPage();
+                                  } else {
+                                    null;
+                                  }
+                                },
+                                child: const Text('Add'))
+                          ],
+                        )
+                      ],
+                    )),
+              )
+            ],
+          );
+        });
+  }
+
+  editPurchaseItemOrderDialog(BuildContext context,
+      PurchaseOrderItem purchaseOrderItem, WidgetRef ref) {
+    final TextEditingController quantityController = TextEditingController();
+    final TextEditingController estimatedPriceController =
+        TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final itemOrderNotifier =
+        ref.read(purchaseOrderCartNotifierProvider.notifier);
+
+    quantityController.text = purchaseOrderItem.quantity.toString();
+    estimatedPriceController.text = purchaseOrderItem.estimatedPrice.toString();
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Edit Item Order'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Form(
+                    key: formKey,
+                    child: Column(
+                      children: [
+                        Text(
+                          '${purchaseOrderItem.sku} - ${purchaseOrderItem.itemName}',
+                          style: customTextStyle.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: quantityController,
+                            decoration: InputDecoration(
+                                border: const OutlineInputBorder(),
+                                labelText:
+                                    'Quantity (in ${purchaseOrderItem.unitOfMeasurement}s)'),
+                            keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.next,
+                            validator: (value) {
+                              if (value!.isEmpty) {
+                                return "Please enter the estimated unit price...";
+                              } else if (double.tryParse(value)! <= 0) {
+                                return 'Please enter a positive number greater than zero...';
+                              } else {
+                                return null;
+                              }
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: estimatedPriceController,
+                            decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Estimated Price/Unit (in Php)'),
+                            keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.done,
+                            validator: (value) {
+                              if (value!.isEmpty) {
+                                return "Please enter the estimated unit price...";
+                              } else if (double.tryParse(value)! <= 0) {
+                                return 'Please enter a positive number greater than zero...';
+                              } else {
+                                return null;
+                              }
+                            },
+                          ),
+                        ),
+                        ButtonBar(
+                          children: [
+                            TextButton(
+                                onPressed: () => navigationController
+                                    .navigateToPreviousPage(),
+                                child: const Text('Cancel')),
+                            FilledButton(
+                                onPressed: () {
+                                  var isValid =
+                                      formKey.currentState!.validate();
+
+                                  if (isValid) {
+                                    var updatedQuantity = double.tryParse(
+                                        quantityController.text);
+                                    var updatedEstimatedPrice = double.tryParse(
+                                        estimatedPriceController.text);
+                                    var updatedPurchaseOrderItem =
+                                        purchaseOrderItem;
+
+                                    updatedPurchaseOrderItem =
+                                        purchaseOrderItem.copyWith(
+                                            quantity: updatedQuantity,
+                                            estimatedPrice:
+                                                updatedEstimatedPrice);
+
+                                    debugPrint(
+                                        updatedPurchaseOrderItem.itemID!);
+                                    debugPrint(updatedPurchaseOrderItem.quantity
+                                        .toString());
+
+                                    itemOrderNotifier
+                                        .addItem(updatedPurchaseOrderItem);
+
+                                    snackBarController.showSnackBar(
+                                        'Item Order successfully changed...');
+
+                                    navigationController
+                                        .navigateToPreviousPage();
+                                  } else {
+                                    null;
+                                  }
+                                },
+                                child: const Text('Edit'))
+                          ],
+                        )
+                      ],
+                    )),
+              )
+            ],
+          );
+        });
   }
 
   addStockLocationDialog(BuildContext context, String uid) {
@@ -987,13 +1254,71 @@ class Services {
 
       snackBarController.showLoadingSnackBar(message: "Adjusting stock...");
 
-      inventoryController.inventoryStockLevelAdjustment(
-          uid: uid,
-          stock: stock,
-          adjustedStockLevel: adjustedStockLevelDouble!,
-          reason: reason).whenComplete(() {
+      inventoryController
+          .inventoryStockLevelAdjustment(
+              uid: uid,
+              stock: stock,
+              adjustedStockLevel: adjustedStockLevelDouble!,
+              reason: reason)
+          .whenComplete(() {
         snackBarController.hideCurrentSnackBar();
         snackBarController.showSnackBar("Stock successfully adjusted...");
+
+        navigationController.navigateToPreviousPage();
+      });
+    } else {
+      snackBarController
+          .showSnackBarError('Kindly review the adjustment information...');
+    }
+  }
+
+  reviewAndAdjustCostPrice(GlobalKey<FormState> formKey, String uid,
+      Stock stock, String adjustedCostPrice, String reason) {
+    bool isValid = formKey.currentState!.validate();
+
+    if (isValid) {
+      var adjustedCostPriceDouble = double.tryParse(adjustedCostPrice);
+
+      snackBarController.showLoadingSnackBar(
+          message: "Adjusting cost price...");
+
+      inventoryController
+          .costPriceAdjustment(
+              uid: uid,
+              stock: stock,
+              adjustedCostPrice: adjustedCostPriceDouble!,
+              reason: reason)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar("Cost price successfully adjusted...");
+
+        navigationController.navigateToPreviousPage();
+      });
+    } else {
+      snackBarController
+          .showSnackBarError('Kindly review the adjustment information...');
+    }
+  }
+
+  reviewAndAdjustSalePrice(GlobalKey<FormState> formKey, String uid,
+      Stock stock, String adjustedSalePrice, String reason) {
+    bool isValid = formKey.currentState!.validate();
+
+    if (isValid) {
+      var adjustedSalePriceDouble = double.tryParse(adjustedSalePrice);
+
+      snackBarController.showLoadingSnackBar(
+          message: "Adjusting sale price...");
+
+      inventoryController
+          .salePriceAdjustment(
+              uid: uid,
+              stock: stock,
+              adjustedSalePrice: adjustedSalePriceDouble!,
+              reason: reason)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar("Sale price successfully adjusted...");
 
         navigationController.navigateToPreviousPage();
       });
@@ -1255,6 +1580,55 @@ class Services {
     }
   }
 
+  reviewAndSubmitPurchaseOrder(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Supplier? supplier,
+      required String? deliveryAddress,
+      required DateTime? expectedDeliveryDate,
+      required List<PurchaseOrderItem>? purchaseOrderItemList}) {
+    bool isValid = formKey.currentState!.validate();
+
+    if (supplier == null) {
+      snackBarController
+          .showSnackBarError('Please provide a supplier for this order...');
+    } else if (!isValid) {
+      snackBarController
+          .showSnackBarError('Please review the information you provided...');
+    } else if (purchaseOrderItemList!.isEmpty) {
+      snackBarController.showSnackBarError('You do not have any orders...');
+    } else {
+      var purchaseOrderID = itemController.getItemID();
+      List<Map>? itemOrderList = [];
+      for (var item in purchaseOrderItemList) {
+        itemOrderList.add(item.toMap());
+      }
+      PurchaseOrder purchaseOrder = PurchaseOrder(
+          supplier: supplier.toFirestore(),
+          deliveryAddress: deliveryAddress,
+          expectedDeliveryDate: expectedDeliveryDate,
+          orderPlaced: false,
+          orderConfirmed: false,
+          orderPlacedOn: defaultDateTime,
+          orderConfirmedOn: defaultDateTime,
+          deliveryConfirmedOn: defaultDateTime,
+          itemOrderList: itemOrderList,
+          purchaseOrderID: purchaseOrderID,
+          orderCreatedOn: DateTime.now());
+      snackBarController.showLoadingSnackBar(
+          message: 'Creating purchase order....');
+
+      purchaseOrderController
+          .addPurchaseOrder(uid: uid, purchaseOrder: purchaseOrder)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController
+            .showSnackBar('Purchase order successfully created...');
+        navigateToPreviousPage();
+      });
+    }
+  }
+
   reviewAndSubmitItemUpdate(
       {required GlobalKey<FormState> formKey,
       required WidgetRef ref,
@@ -1420,6 +1794,16 @@ class Services {
     }
   }
 
+  getIncomingInventoryState(bool orderPlaced, bool orderConfirmed) {
+    if (orderPlaced == false) {
+      return IncomingInventoryState.forPlacement;
+    } else if (orderConfirmed == false) {
+      return IncomingInventoryState.forConfirmation;
+    } else {
+      return IncomingInventoryState.forDelivery;
+    }
+  }
+
   ExpirationState getExpirationState(
       DateTime expirationDate, double expirationWarning) {
     DateTime now = DateTime.now();
@@ -1499,6 +1883,14 @@ class Services {
     final formatter = NumberFormat.currency(
       locale: 'en_PH',
       symbol: '₱',
+    );
+    return formatter.format(amount);
+  }
+
+  String formatAsPhilippineCurrencyWithoutSymbol(num amount) {
+    final formatter = NumberFormat.currency(
+      locale: 'fil_PH',
+      symbol: '',
     );
     return formatter.format(amount);
   }
@@ -1597,5 +1989,44 @@ class Services {
     double adjustedStockLevel = currentStockLevel - adjustment;
 
     return adjustedStockLevel;
+  }
+
+  String addLeadingZeros(int a) {
+    String aString = a.toString();
+    int length = aString.length;
+
+    if (length < 8) {
+      int numberOfZerosToAdd = 8 - length;
+      String zeros = '0' * numberOfZerosToAdd;
+      return zeros + aString;
+    } else {
+      return aString;
+    }
+  }
+
+  String createPurchaseOrderNumber(int a) {
+    String aString = a.toString();
+    int length = aString.length;
+
+    if (length < 8) {
+      int numberOfZerosToAdd = 8 - length;
+      String zeros = '0' * numberOfZerosToAdd;
+      return 'PO-$zeros$aString';
+    } else {
+      return 'PO-$aString';
+    }
+  }
+
+  String createSalesOrderNumber(int a) {
+    String aString = a.toString();
+    int length = aString.length;
+
+    if (length < 8) {
+      int numberOfZerosToAdd = 8 - length;
+      String zeros = '0' * numberOfZerosToAdd;
+      return 'PO-$zeros$aString';
+    } else {
+      return 'PO-$aString';
+    }
   }
 }

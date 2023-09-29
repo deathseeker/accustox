@@ -208,6 +208,11 @@ class NavigationRepository implements NavigationRepositoryInterface {
   }
 
   @override
+  navigateToNewPurchaseOrder() {
+    return _services.navigateToNewPurchaseOrder();
+  }
+
+  @override
   navigateToEditItem({required Item item}) {
     return _services.navigateToEditItem(item);
   }
@@ -231,6 +236,16 @@ class NavigationRepository implements NavigationRepositoryInterface {
   @override
   navigateToAdjustInventory({required Stock stock}) {
     return _services.navigateToAdjustInventory(stock);
+  }
+
+  @override
+  navigateToAddItemToPurchaseOrder() {
+    return _services.navigateToAddItemToPurchaseOrder();
+  }
+
+  @override
+  navigateToPurchaseOrderDetails({required PurchaseOrder purchaseOrder}) {
+    return _services.navigateToPurchaseOrderDetails(purchaseOrder);
   }
 }
 
@@ -340,6 +355,23 @@ class DialogRepository implements DialogInterface {
   @override
   processRemoveSupplier({required String uid, required Supplier supplier}) {
     return _services.processRemoveSupplier(uid, supplier);
+  }
+
+  @override
+  addPurchaseItemOrderDialog(
+      {required BuildContext context,
+      required Item item,
+      required WidgetRef ref}) {
+    return _services.addPurchaseItemOrderDialog(context, item, ref);
+  }
+
+  @override
+  editPurchaseItemOrderDialog(
+      {required BuildContext context,
+      required PurchaseOrderItem purchaseOrderItem,
+      required WidgetRef ref}) {
+    return _services.editPurchaseItemOrderDialog(
+        context, purchaseOrderItem, ref);
   }
 }
 
@@ -936,6 +968,28 @@ class InventoryRepository implements InventoryInterface {
     return _services.reviewAndAdjustStockLevel(
         formKey, uid, stock, adjustedStockLevel, reason);
   }
+
+  @override
+  reviewAndAdjustCostPrice(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedCostPrice,
+      required String reason}) {
+    return _services.reviewAndAdjustCostPrice(
+        formKey, uid, stock, adjustedCostPrice, reason);
+  }
+
+  @override
+  reviewAndAdjustSalePrice(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedSalePrice,
+      required String reason}) {
+    return _services.reviewAndAdjustSalePrice(
+        formKey, uid, stock, adjustedSalePrice, reason);
+  }
 }
 
 class DateTimeRepository implements DateTimeInterface {
@@ -1021,6 +1075,11 @@ class CurrencyRepository implements CurrencyInterface {
   String formatAsPhilippineCurrency({required num amount}) {
     return _services.formatAsPhilippineCurrency(amount);
   }
+
+  @override
+  String formatAsPhilippineCurrencyWithoutSymbol({required num amount}) {
+    return _services.formatAsPhilippineCurrencyWithoutSymbol(amount);
+  }
 }
 
 class StatisticsRepository implements StatisticsInterface {
@@ -1085,5 +1144,55 @@ class ValidatorRepository implements ValidatorInterface {
   bool isPositiveDoubleBelowOrEqualToCount(
       {required String input, required double maxCount}) {
     return _services.isPositiveDoubleBelowOrEqualToCount(input, maxCount);
+  }
+}
+
+class PurchaseOrderRepository implements PurchaseOrderInterface {
+  final Services _services;
+  final DatabaseService _databaseService;
+
+  PurchaseOrderRepository(this._services, this._databaseService);
+
+  @override
+  String createPurchaseOrderNumber({required int a}) {
+    return _services.createPurchaseOrderNumber(a);
+  }
+
+  @override
+  Future<void> addPurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder}) {
+    return _databaseService.addPurchaseOrder(uid, purchaseOrder);
+  }
+
+  @override
+  reviewAndSubmitPurchaseOrder(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Supplier? supplier,
+      required String? deliveryAddress,
+      required DateTime? expectedDeliveryDate,
+      required List<PurchaseOrderItem>? purchaseOrderItemList}) {
+    return _services.reviewAndSubmitPurchaseOrder(
+        formKey: formKey,
+        uid: uid,
+        supplier: supplier,
+        deliveryAddress: deliveryAddress,
+        expectedDeliveryDate: expectedDeliveryDate,
+        purchaseOrderItemList: purchaseOrderItemList);
+  }
+
+  @override
+  Stream<List<PurchaseOrder>> streamIncomingInventoryList({required String uid}) {
+    return _databaseService.streamIncomingInventoryList(uid);
+  }
+
+  @override
+  getIncomingInventoryState({required bool orderPlaced, required bool orderConfirmed}) {
+    return _services.getIncomingInventoryState(orderPlaced, orderConfirmed);
+  }
+
+  @override
+  Stream<PurchaseOrder> streamPurchaseOrder({required String uid, required String purchaseOrderID}) {
+    return _databaseService.streamPurchaseOrder(uid, purchaseOrderID);
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:accustox/providers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/collection.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -633,6 +634,100 @@ class AsyncCurrentInventoryDataListNotifier
   }
 }
 
+/*class AsyncIncomingInventoryDataListNotifier
+    extends AutoDisposeAsyncNotifier<List<IncomingInventoryData>> {
+  @override
+  FutureOr<List<IncomingInventoryData>> build() {
+    var asyncIncomingInventoryList =
+        ref.watch(streamIncomingInventoryListProvider);
+    var incomingInventoryFilter =
+        ref.watch(incomingInventoryFilterSelectionProvider);
+    List<IncomingInventoryData> incomingInventoryDataList = [];
+    List<IncomingInventoryData> finalList = [];
+
+    asyncIncomingInventoryList.whenData((incomingInventoryList) {
+      for (var purchaseOrder in incomingInventoryList) {
+        var incomingInventoryState =
+            purchaseOrderController.getIncomingInventoryState(
+                orderPlaced: purchaseOrder.orderPlaced!,
+                orderConfirmed: purchaseOrder.orderConfirmed!);
+
+        incomingInventoryDataList.add(IncomingInventoryData(
+            purchaseOrder: purchaseOrder,
+            incomingInventoryState: incomingInventoryState));
+      }
+    });
+
+    incomingInventoryFilter == IncomingInventoryFilter.all
+        ? finalList = incomingInventoryDataList
+        : finalList = incomingInventoryDataList
+            .where((incomingInventoryData) =>
+                incomingInventoryData.incomingInventoryState.label ==
+                incomingInventoryFilter.label)
+            .toList();
+
+    finalList.sort((a, b) => a.purchaseOrder.purchaseOrderNumber!
+        .toLowerCase()
+        .compareTo(b.purchaseOrder.purchaseOrderNumber!.toLowerCase()));
+
+    return finalList;
+  }
+
+  Future<void> resetState() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      return build();
+    });
+  }
+}*/
+
+class AsyncIncomingInventoryDataListNotifier
+    extends AutoDisposeAsyncNotifier<List<IncomingInventoryData>> {
+  @override
+  FutureOr<List<IncomingInventoryData>> build() {
+    var asyncIncomingInventoryList =
+    ref.watch(streamIncomingInventoryListProvider);
+    var incomingInventoryFilter =
+    ref.watch(incomingInventoryFilterSelectionProvider);
+    List<IncomingInventoryData> incomingInventoryDataList = [];
+    List<IncomingInventoryData> finalList = [];
+
+    asyncIncomingInventoryList.whenData((incomingInventoryList) {
+      for (var purchaseOrder in incomingInventoryList) {
+        var incomingInventoryState =
+        purchaseOrderController.getIncomingInventoryState(
+            orderPlaced: purchaseOrder.orderPlaced!,
+            orderConfirmed: purchaseOrder.orderConfirmed!);
+
+        incomingInventoryDataList.add(IncomingInventoryData(
+            purchaseOrder: purchaseOrder,
+            incomingInventoryState: incomingInventoryState));
+      }
+    });
+
+    incomingInventoryFilter == IncomingInventoryFilter.all
+        ? finalList = incomingInventoryDataList
+        : finalList = incomingInventoryDataList
+        .where((incomingInventoryData) =>
+    incomingInventoryData.incomingInventoryState.label ==
+        incomingInventoryFilter.label)
+        .toList();
+
+    finalList.sort((a, b) => a.purchaseOrder.purchaseOrderNumber!
+        .toLowerCase()
+        .compareTo(b.purchaseOrder.purchaseOrderNumber!.toLowerCase()));
+
+    return finalList;
+  }
+
+  Future<void> resetState() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      return build();
+    });
+  }
+}
+
 class AsyncCategoryFilterListNotifier
     extends AsyncNotifier<List<CategoryFilter>> {
   @override
@@ -857,6 +952,227 @@ class ItemDocument {
     return ItemDocument(
       itemList: data['itemList'] is Iterable ? List.from(data['itemList']) : [],
     );
+  }
+}
+
+class PurchaseOrderItem extends Item {
+  double quantity;
+  double estimatedPrice;
+
+  PurchaseOrderItem({
+    required String itemName,
+    required String manufacturer,
+    required String sku,
+    required String ean,
+    required String brand,
+    required String productType,
+    required String unitOfMeasurement,
+    required String manufacturerPartNumber,
+    required String itemDescription,
+    required String imageURL,
+    required List<Map> categoryTags,
+    required String itemID,
+    required String uid,
+    required bool isItemAvailable,
+    required String size,
+    required String color,
+    required String length,
+    required String width,
+    required String height,
+    required String perishability,
+    required this.quantity,
+    required this.estimatedPrice,
+  }) : super(
+          itemName: itemName,
+          manufacturer: manufacturer,
+          sku: sku,
+          ean: ean,
+          brand: brand,
+          productType: productType,
+          unitOfMeasurement: unitOfMeasurement,
+          manufacturerPartNumber: manufacturerPartNumber,
+          itemDescription: itemDescription,
+          imageURL: imageURL,
+          categoryTags: categoryTags,
+          itemID: itemID,
+          uid: uid,
+          isItemAvailable: isItemAvailable,
+          size: size,
+          color: color,
+          length: length,
+          width: width,
+          height: height,
+          perishability: perishability,
+        );
+
+  factory PurchaseOrderItem.fromMap(Map? data) {
+    return PurchaseOrderItem(
+      quantity: data?['quantity'] ?? 0.0,
+      estimatedPrice: data?['estimatedPrice'] ?? 0.0,
+      itemName: data?['itemName'] ?? '',
+      manufacturer: data?['manufacturer'] ?? '',
+      sku: data?['sku'] ?? '',
+      ean: data?['ean'] ?? '',
+      brand: data?['brand'] ?? '',
+      productType: data?['productType'] ?? '',
+      unitOfMeasurement: data?['unitOfMeasurement'] ?? '',
+      manufacturerPartNumber: data?['manufacturerPartNumber'] ?? '',
+      itemDescription: data?['itemDescription'] ?? '',
+      imageURL: data?['imageURL'] ?? '',
+      categoryTags: data?['categoryTags'] is Iterable
+          ? List<Map>.from(data?['categoryTags'] ?? [])
+          : [],
+      itemID: data?['itemID'] ?? '',
+      uid: data?['uid'] ?? '',
+      isItemAvailable: data?['isItemAvailable'] ?? false,
+      size: data?['size'] ?? '',
+      color: data?['color'] ?? '',
+      length: data?['length'] ?? '',
+      width: data?['width'] ?? '',
+      height: data?['height'] ?? '',
+      perishability: data?['perishability'] ?? '',
+    );
+  }
+
+  factory PurchaseOrderItem.fromItem(Item item,
+      {required double quantity, required double estimatedPrice}) {
+    return PurchaseOrderItem(
+      quantity: quantity,
+      estimatedPrice: estimatedPrice,
+      itemName: item.itemName!,
+      manufacturer: item.manufacturer!,
+      sku: item.sku!,
+      ean: item.ean!,
+      brand: item.brand!,
+      productType: item.productType!,
+      unitOfMeasurement: item.unitOfMeasurement!,
+      manufacturerPartNumber: item.manufacturerPartNumber!,
+      itemDescription: item.itemDescription!,
+      imageURL: item.imageURL!,
+      categoryTags: item.categoryTags!,
+      itemID: item.itemID!,
+      uid: item.uid!,
+      isItemAvailable: item.isItemAvailable!,
+      size: item.size!,
+      color: item.color!,
+      length: item.length!,
+      width: item.width!,
+      height: item.height!,
+      perishability: item.perishability!,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'itemName': itemName,
+      'manufacturer': manufacturer,
+      'sku': sku,
+      'ean': ean,
+      'brand': brand,
+      'productType': productType,
+      'unitOfMeasurement': unitOfMeasurement,
+      'manufacturerPartNumber': manufacturerPartNumber,
+      'itemDescription': itemDescription,
+      'imageURL': imageURL,
+      'categoryTags': categoryTags,
+      'itemID': itemID,
+      'uid': uid,
+      'isItemAvailable': isItemAvailable,
+      'size': size,
+      'color': color,
+      'length': length,
+      'width': width,
+      'height': height,
+      'perishability': perishability,
+      'quantity': quantity,
+      'estimatedPrice': estimatedPrice,
+    };
+  }
+
+  @override
+  Map<String, dynamic> toFirestore() {
+    return {
+      'itemName': itemName,
+      'manufacturer': manufacturer,
+      'sku': sku,
+      'ean': ean,
+      'brand': brand,
+      'productType': productType,
+      'unitOfMeasurement': unitOfMeasurement,
+      'manufacturerPartNumber': manufacturerPartNumber,
+      'itemDescription': itemDescription,
+      'imageURL': imageURL,
+      'categoryTags': categoryTags,
+      'itemID': itemID,
+      'uid': uid,
+      'isItemAvailable': isItemAvailable,
+      'size': size,
+      'color': color,
+      'length': length,
+      'width': width,
+      'height': height,
+      'perishability': perishability,
+      'quantity': quantity,
+      'estimatedPrice': estimatedPrice,
+    };
+  }
+
+  double getEstimatedSubTotal() {
+    return quantity * estimatedPrice;
+  }
+
+  @override
+  PurchaseOrderItem copyWith({
+    String? itemName,
+    String? manufacturer,
+    String? unit,
+    String? sku,
+    String? ean,
+    String? brand,
+    String? country,
+    String? productType,
+    String? unitOfMeasurement,
+    String? manufacturerPartNumber,
+    double? price,
+    String? itemDescription,
+    String? imageURL,
+    List<Map>? categoryTags,
+    String? itemID,
+    String? uid,
+    bool? isItemAvailable,
+    String? size,
+    String? color,
+    String? length,
+    String? width,
+    String? height,
+    String? perishability,
+    double? quantity,
+    double? estimatedPrice,
+  }) {
+    return PurchaseOrderItem(
+        itemName: itemName ?? this.itemName!,
+        manufacturer: manufacturer ?? this.manufacturer!,
+        sku: sku ?? this.sku!,
+        ean: ean ?? this.ean!,
+        brand: brand ?? this.brand!,
+        productType: productType ?? this.productType!,
+        unitOfMeasurement: unitOfMeasurement ?? this.unitOfMeasurement!,
+        manufacturerPartNumber:
+            manufacturerPartNumber ?? this.manufacturerPartNumber!,
+        itemDescription: itemDescription ?? this.itemDescription!,
+        imageURL: imageURL ?? this.imageURL!,
+        categoryTags: categoryTags ?? this.categoryTags!,
+        itemID: itemID ?? this.itemID!,
+        uid: uid ?? this.uid!,
+        isItemAvailable: isItemAvailable ?? this.isItemAvailable!,
+        size: size ?? this.size!,
+        color: color ?? this.color!,
+        length: length ?? this.length!,
+        width: width ?? this.width!,
+        height: height ?? this.height!,
+        perishability: perishability ?? this.perishability!,
+        estimatedPrice: estimatedPrice ?? this.estimatedPrice,
+        quantity: quantity ?? this.quantity);
   }
 }
 
@@ -2075,12 +2391,72 @@ class SupplierSelectionNotifier extends StateNotifier<Supplier?> {
   }
 }
 
+class PurchaseOrderCartNotifier extends StateNotifier<List<PurchaseOrderItem>> {
+  PurchaseOrderCartNotifier() : super([]);
+
+  void addItem(PurchaseOrderItem purchaseOrderItem) {
+    // Check if the item is already in the cart
+    final existingItemIndex = state.indexWhere(
+      (item) => item.itemID == purchaseOrderItem.itemID,
+    );
+
+    if (existingItemIndex != -1) {
+      // Item already exists, update the quantity
+      final updatedItem = purchaseOrderItem.copyWith(
+        quantity: purchaseOrderItem.quantity,
+        estimatedPrice: purchaseOrderItem.estimatedPrice,
+      );
+      state = List.from(state)..[existingItemIndex] = updatedItem;
+    } else {
+      // Item does not exist, add it to the cart
+      state = [...state, purchaseOrderItem];
+    }
+  }
+
+  void removeItem(String itemID) {
+    state = state.where((item) => item.itemID != itemID).toList();
+  }
+
+  void clearCart() {
+    state = [];
+  }
+
+  double getTotalCost() {
+    return state.fold(
+        0.0, (total, item) => total + (item.quantity * item.estimatedPrice));
+  }
+
+  /*int getTotalItemCount() {
+    return state.fold(0, (total, item) => total + item.quantity);
+  }*/
+
+  PurchaseOrderItem? getItem(String itemID) {
+    return state.firstWhereOrNull((item) => item.itemID == itemID);
+  }
+
+  bool isCartEmpty() {
+    return state.isEmpty;
+  }
+
+  List<Map>? stateAsMap() {
+    return state.map((e) => e.toMap()).toList();
+  }
+}
+
 class CurrentInventoryData {
   final Inventory inventory;
   final StockLevelState stockLevelState;
 
   CurrentInventoryData(
       {required this.inventory, required this.stockLevelState});
+}
+
+class IncomingInventoryData {
+  final PurchaseOrder purchaseOrder;
+  final IncomingInventoryState incomingInventoryState;
+
+  IncomingInventoryData(
+      {required this.purchaseOrder, required this.incomingInventoryState});
 }
 
 class InventoryTransaction {
@@ -2144,5 +2520,168 @@ class InventoryTransaction {
       'reason': reason, // Include reason in the Map
       'stock': stock,
     };
+  }
+}
+
+class PurchaseOrder {
+  String? purchaseOrderNumber;
+  Map? supplier;
+  String? deliveryAddress;
+  DateTime? expectedDeliveryDate;
+  bool? orderPlaced;
+  bool? orderConfirmed;
+  DateTime? orderPlacedOn;
+  DateTime? orderConfirmedOn;
+  DateTime? deliveryConfirmedOn;
+  List<Map>? itemOrderList;
+  String? purchaseOrderID;
+  DateTime? orderCreatedOn;
+
+  PurchaseOrder(
+      {this.purchaseOrderNumber,
+      this.supplier,
+      this.deliveryAddress,
+      this.expectedDeliveryDate,
+      this.orderPlaced,
+      this.orderConfirmed,
+      this.orderPlacedOn,
+      this.orderConfirmedOn,
+      this.deliveryConfirmedOn,
+      this.itemOrderList,
+      this.purchaseOrderID,
+      this.orderCreatedOn});
+
+  factory PurchaseOrder.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    return PurchaseOrder(
+        purchaseOrderNumber: data['purchaseOrderNumber'] ?? '',
+        supplier: data['supplier'],
+        deliveryAddress: data['deliveryAddress'] ?? '',
+        expectedDeliveryDate: dateTimeController.timestampToDateTime(
+            timestamp: data['expectedDeliveryDate']),
+        orderPlaced: data['orderPlaced'] ?? false,
+        orderConfirmed: data['orderConfirmed'] ?? false,
+        orderPlacedOn: dateTimeController.timestampToDateTime(
+            timestamp: data['orderPlacedOn']),
+        orderConfirmedOn: dateTimeController.timestampToDateTime(
+            timestamp: data['orderConfirmedOn']),
+        deliveryConfirmedOn: dateTimeController.timestampToDateTime(
+            timestamp: data['deliveryConfirmedOn']),
+        itemOrderList: data['itemOrderList'] is Iterable
+            ? List<Map>.from(data['itemOrderList'] ?? [])
+            : [],
+        purchaseOrderID: data['purchaseOrderID'] ?? '',
+        orderCreatedOn: dateTimeController.timestampToDateTime(
+            timestamp: data['orderCreatedOn']));
+  }
+
+  // Convert PurchaseOrder to Firestore document
+  Map<String, dynamic> toFirestore() {
+    return {
+      'purchaseOrderNumber': purchaseOrderNumber,
+      'supplier': supplier,
+      'deliveryAddress': deliveryAddress,
+      'expectedDeliveryDate': dateTimeController.dateTimeToTimestamp(
+          dateTime: expectedDeliveryDate!),
+      'orderPlaced': orderPlaced,
+      'orderConfirmed': orderConfirmed,
+      'orderPlacedOn':
+          dateTimeController.dateTimeToTimestamp(dateTime: orderPlacedOn!),
+      'orderConfirmedOn':
+          dateTimeController.dateTimeToTimestamp(dateTime: orderConfirmedOn!),
+      'deliveryConfirmedOn': dateTimeController.dateTimeToTimestamp(
+          dateTime: deliveryConfirmedOn!),
+      'itemOrderList': itemOrderList,
+      'purchaseOrderID': purchaseOrderID,
+      'orderCreatedOn':
+          dateTimeController.dateTimeToTimestamp(dateTime: orderCreatedOn!)
+    };
+  }
+
+  factory PurchaseOrder.fromMap(Map<String, dynamic> data) {
+    return PurchaseOrder(
+        purchaseOrderNumber: data['purchaseOrderNumber'],
+        supplier: data['supplier'],
+        deliveryAddress: data['deliveryAddress'],
+        expectedDeliveryDate: data['expectedDeliveryDate'],
+        orderPlaced: data['orderPlaced'],
+        orderConfirmed: data['orderConfirmed'],
+        orderPlacedOn: data['orderPlacedOn'],
+        orderConfirmedOn: data['orderConfirmedOn'],
+        deliveryConfirmedOn: data['deliveryConfirmedOn'],
+        itemOrderList: data['itemOrderList'],
+        purchaseOrderID: data['purchaseOrderID'],
+        orderCreatedOn: data['orderCreatedOn']);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'purchaseOrderNumber': purchaseOrderNumber,
+      'supplier': supplier,
+      'deliveryAddress': deliveryAddress,
+      'expectedDeliveryDate': expectedDeliveryDate,
+      'orderPlaced': orderPlaced,
+      'orderConfirmed': orderConfirmed,
+      'orderPlacedOn': orderPlacedOn,
+      'orderConfirmedOn': orderConfirmedOn,
+      'deliveryConfirmedOn': deliveryConfirmedOn,
+      'itemOrderList': itemOrderList,
+      'purchaseOrderID': purchaseOrderID,
+      'orderCreatedOn': orderCreatedOn
+    };
+  }
+
+  double getTotalCost() {
+    List<PurchaseOrderItem> purchaseOrderItemList =
+        itemOrderList!.map((e) => PurchaseOrderItem.fromMap(e)).toList();
+
+    var getEstimatedTotalCost = purchaseOrderItemList.fold(
+        0.0, (total, item) => total + (item.quantity * item.estimatedPrice));
+
+    return getEstimatedTotalCost;
+  }
+
+  List<PurchaseOrderItem> getPurchaseOrderItemList() {
+    return itemOrderList!.map((e) => PurchaseOrderItem.fromMap(e)).toList();
+  }
+
+  void update({
+    String? purchaseOrderNumber,
+    Map? supplier,
+    String? deliveryAddress,
+    DateTime? expectedDeliveryDate,
+    bool? orderPlaced,
+    bool? orderConfirmed,
+    DateTime? orderPlacedOn,
+    DateTime? orderConfirmedOn,
+    DateTime? deliveryConfirmedOn,
+    List<Map>? itemOrderList,
+    String? purchaseOrderID,
+  }) {
+    this.purchaseOrderNumber = purchaseOrderNumber ?? this.purchaseOrderNumber;
+    this.supplier = supplier ?? this.supplier;
+    this.deliveryAddress = deliveryAddress ?? this.deliveryAddress;
+    this.expectedDeliveryDate =
+        expectedDeliveryDate ?? this.expectedDeliveryDate;
+    this.orderPlaced = orderPlaced ?? this.orderPlaced;
+    this.orderConfirmed = orderConfirmed ?? this.orderConfirmed;
+    this.orderPlacedOn = orderPlacedOn ?? this.orderPlacedOn;
+    this.orderConfirmedOn = orderConfirmedOn ?? this.orderConfirmedOn;
+    this.deliveryConfirmedOn = deliveryConfirmedOn ?? this.deliveryConfirmedOn;
+    this.itemOrderList = itemOrderList ?? this.itemOrderList;
+  }
+}
+
+class PurchaseOrderNumber {
+  final int? purchaseOrderNumber;
+
+  PurchaseOrderNumber({this.purchaseOrderNumber});
+
+  factory PurchaseOrderNumber.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return PurchaseOrderNumber(
+      purchaseOrderNumber: data['purchaseOrderNumber'],
+    );
   }
 }

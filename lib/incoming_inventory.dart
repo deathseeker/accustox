@@ -1,4 +1,7 @@
+import 'package:accustox/controllers.dart';
+import 'package:accustox/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'enumerated_values.dart';
 import 'models.dart';
 
@@ -18,7 +21,8 @@ class IncomingInventory extends StatelessWidget {
             padding: const EdgeInsets.only(top: 16.0),
             child: GroupTitleWithFilledButton(
                 title: 'Incoming Inventory',
-                onPressed: () {},
+                onPressed: () =>
+                    navigationController.navigateToNewPurchaseOrder(),
                 buttonLabel: 'New Purchase Order'),
           ),
           const Padding(
@@ -32,85 +36,41 @@ class IncomingInventory extends StatelessWidget {
   }
 }
 
-class IncomingInventoryList extends StatelessWidget {
+class IncomingInventoryList extends ConsumerWidget {
   const IncomingInventoryList({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    List<IncomingInventoryCardData> incomingInventoryList = [
-      IncomingInventoryCardData(
-          'SupplierName',
-          'PO-1234678',
-          'Php 999999.99',
-          'Delivery Address',
-          'DD/MM/YYYY',
-          [
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-          ],
-          IncomingInventoryState.forPlacement),
-      IncomingInventoryCardData(
-          'SupplierName',
-          'PO-1234678',
-          'Php 999999.99',
-          'Purok Cebuano, Poblacion, Malungon, Sarangani Province, Mindanao, Philippines',
-          'DD/MM/YYYY',
-          [
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-          ],
-          IncomingInventoryState.forDelivery),
-      IncomingInventoryCardData(
-          'SupplierName',
-          'PO-1234678',
-          'Php 999999.99',
-          'Purok Cebuano, Poblacion, Malungon, Sarangani Province, Mindanao, Philippines',
-          'DD/MM/YYYY',
-          [
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-            PurchaseOrderItemListTileData('ItemName', 'SAM-123-ABC-456',
-                '9999999 Units', '999999.99/Unit', 'Php 999999.99'),
-          ],
-          IncomingInventoryState.forConfirmation),
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    var asyncIncomingInventoryList =
+        ref.watch(asyncIncomingInventoryDataListProvider);
 
-    return Expanded(
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemBuilder: (context, index) {
-          IncomingInventoryCardData data = incomingInventoryList[index];
-          return IncomingInventoryCard(
-            supplierName: data.supplierName,
-            purchaseOrderNumber: data.purchaseOrderNumber,
-            estimatedTotalCost: data.estimatedTotalCost,
-            deliveryAddress: data.deliveryAddress,
-            expectedDeliveryDate: data.expectedDeliveryDate,
-            purchaseOrderItemList: data.purchaseOrderItemList,
-            incomingInventoryState: data.incomingInventoryState,
-          );
+    return asyncIncomingInventoryList.when(
+        data: (incomingInventoryList) {
+          return incomingInventoryList.isEmpty
+              ? const Expanded(
+                  child: ErrorMessage(
+                      errorMessage:
+                          'You have no purchase orders under this category...'),
+                )
+              : Expanded(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemBuilder: (context, index) {
+                      IncomingInventoryData data = incomingInventoryList[index];
+                      return IncomingInventoryCard(
+                        purchaseOrder: data.purchaseOrder,
+                        incomingInventoryState: data.incomingInventoryState,
+                      );
+                    },
+                    itemCount: incomingInventoryList.length,
+                    separatorBuilder: (context, index) => const SizedBox(
+                      height: 8.0,
+                    ),
+                  ),
+                );
         },
-        itemCount: incomingInventoryList.length,
-        separatorBuilder: (context, index) => const SizedBox(
-          height: 8.0,
-        ),
-      ),
-    );
+        error: (e, st) =>
+            const ErrorMessage(errorMessage: 'Something went wrong...'),
+        loading: () => const LoadingWidget());
   }
 }

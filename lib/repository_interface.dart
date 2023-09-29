@@ -89,6 +89,8 @@ abstract class NavigationRepositoryInterface {
 
   navigateToNewItem();
 
+  navigateToNewPurchaseOrder();
+
   navigateToEditItem({required Item item});
 
   navigateToCurrentInventoryDetails(
@@ -99,6 +101,10 @@ abstract class NavigationRepositoryInterface {
   navigateToMoveInventory({required Stock stock});
 
   navigateToAdjustInventory({required Stock stock});
+
+  navigateToAddItemToPurchaseOrder();
+
+  navigateToPurchaseOrderDetails({required PurchaseOrder purchaseOrder});
 }
 
 abstract class DialogInterface {
@@ -155,6 +161,16 @@ abstract class DialogInterface {
       required Supplier supplier});
 
   processRemoveSupplier({required String uid, required Supplier supplier});
+
+  addPurchaseItemOrderDialog(
+      {required BuildContext context,
+      required Item item,
+      required WidgetRef ref});
+
+  editPurchaseItemOrderDialog(
+      {required BuildContext context,
+      required PurchaseOrderItem purchaseOrderItem,
+      required WidgetRef ref});
 }
 
 abstract class CategoryInterface {
@@ -423,19 +439,42 @@ abstract class InventoryInterface {
       {required String uid, required Inventory inventory});
 
   Future<void> inventoryStockLevelAdjustment(
-      {required String uid, required Stock stock, required double adjustedStockLevel, required String reason});
+      {required String uid,
+      required Stock stock,
+      required double adjustedStockLevel,
+      required String reason});
 
   Future<void> costPriceAdjustment(
-      {required String uid, required Stock stock, required double adjustedCostPrice, required String reason});
+      {required String uid,
+      required Stock stock,
+      required double adjustedCostPrice,
+      required String reason});
 
   Future<void> salePriceAdjustment(
-      {required String uid, required Stock stock, required double adjustedSalePrice, required String reason});
+      {required String uid,
+      required Stock stock,
+      required double adjustedSalePrice,
+      required String reason});
 
   reviewAndAdjustStockLevel(
       {required GlobalKey<FormState> formKey,
       required String uid,
       required Stock stock,
       required String adjustedStockLevel,
+      required String reason});
+
+  reviewAndAdjustCostPrice(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedCostPrice,
+      required String reason});
+
+  reviewAndAdjustSalePrice(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Stock stock,
+      required String adjustedSalePrice,
       required String reason});
 }
 
@@ -472,6 +511,8 @@ abstract class PluralizationInterface {
 
 abstract class CurrencyInterface {
   String formatAsPhilippineCurrency({required num amount});
+
+  String formatAsPhilippineCurrencyWithoutSymbol({required num amount});
 }
 
 abstract class StatisticsInterface {
@@ -505,4 +546,26 @@ abstract class StatisticsInterface {
 abstract class ValidatorInterface {
   bool isPositiveDoubleBelowOrEqualToCount(
       {required String input, required double maxCount});
+}
+
+abstract class PurchaseOrderInterface {
+  String createPurchaseOrderNumber({required int a});
+
+  Future<void> addPurchaseOrder({required String uid, required PurchaseOrder purchaseOrder});
+
+  reviewAndSubmitPurchaseOrder(
+      {required GlobalKey<FormState> formKey,
+        required String uid,
+        required Supplier? supplier,
+        required String? deliveryAddress,
+        required DateTime? expectedDeliveryDate,
+        required List<PurchaseOrderItem>? purchaseOrderItemList});
+
+  Stream<List<PurchaseOrder>> streamIncomingInventoryList(
+      {required String uid});
+
+  getIncomingInventoryState({required bool orderPlaced, required bool orderConfirmed});
+
+  Stream<PurchaseOrder> streamPurchaseOrder(
+      {required String uid, required String purchaseOrderID});
 }

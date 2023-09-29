@@ -1,7 +1,5 @@
 // ignore_for_file: library_private_types_in_public_api
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'controllers.dart';
 import 'package:flutter/material.dart';
 import 'models.dart';
@@ -41,38 +39,17 @@ class NewAdjustmentForm extends StatefulWidget {
 }
 
 class _NewAdjustmentFormState extends State<NewAdjustmentForm> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController dateController = TextEditingController();
-  final TextEditingController reasonController = TextEditingController();
-  final TextEditingController descriptionController = TextEditingController();
-  final TextEditingController stockLevelAdjustmentController =
-      TextEditingController();
-  final TextEditingController costPriceAdjustmentController =
-      TextEditingController();
-  final TextEditingController salePriceAdjustmentController =
-      TextEditingController();
-
-  final FocusNode dateFocusNode = FocusNode();
-  final FocusNode reasonFocusNode = FocusNode();
-  final FocusNode descriptionFocusNode = FocusNode();
-  final FocusNode stockLevelAdjustmentFocusNode = FocusNode();
-  final FocusNode costPriceAdjustmentFocusNode = FocusNode();
-  final FocusNode salePriceAdjustmentFocusNode = FocusNode();
-
-  late InventoryAdjustmentReason selectedReason;
   late AdjustmentType selectedAdjustmentType;
   late Widget selectedWidget;
 
   @override
   void initState() {
     super.initState();
-    selectedReason = InventoryAdjustmentReason.countingErrors;
     selectedAdjustmentType = AdjustmentType.stockLevelAdjustment;
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 
@@ -84,16 +61,6 @@ class _NewAdjustmentFormState extends State<NewAdjustmentForm> {
       adjustmentTypeEntries.add(
         DropdownMenuEntry<AdjustmentType>(
             value: adjustmentType, label: adjustmentType.label),
-      );
-    }
-    final List<DropdownMenuEntry<InventoryAdjustmentReason>>
-        adjustmentReasonEntries =
-        <DropdownMenuEntry<InventoryAdjustmentReason>>[];
-    for (final InventoryAdjustmentReason adjustmentReason
-        in InventoryAdjustmentReason.values) {
-      adjustmentReasonEntries.add(
-        DropdownMenuEntry<InventoryAdjustmentReason>(
-            value: adjustmentReason, label: adjustmentReason.label),
       );
     }
 
@@ -269,7 +236,7 @@ class _StockLevelAdjustmentFormState
   }
 }
 
-class CostPriceAdjustmentForm extends StatefulWidget {
+class CostPriceAdjustmentForm extends ConsumerStatefulWidget {
   const CostPriceAdjustmentForm({super.key, required this.stock});
 
   final Stock stock;
@@ -279,7 +246,8 @@ class CostPriceAdjustmentForm extends StatefulWidget {
       _CostPriceAdjustmentFormState();
 }
 
-class _CostPriceAdjustmentFormState extends State<CostPriceAdjustmentForm> {
+class _CostPriceAdjustmentFormState
+    extends ConsumerState<CostPriceAdjustmentForm> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController costPriceAdjustmentController =
@@ -303,6 +271,8 @@ class _CostPriceAdjustmentFormState extends State<CostPriceAdjustmentForm> {
 
   @override
   Widget build(BuildContext context) {
+    var user = ref.watch(userProvider);
+
     var currentCostPrice = currencyController.formatAsPhilippineCurrency(
         amount: widget.stock.costPrice!);
 
@@ -339,7 +309,7 @@ class _CostPriceAdjustmentFormState extends State<CostPriceAdjustmentForm> {
                 },
               ),
             ),
-            Row(
+            /* Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Flexible(
@@ -354,8 +324,9 @@ class _CostPriceAdjustmentFormState extends State<CostPriceAdjustmentForm> {
                   ),
                 ),
               ],
-            ),
+            ),*/
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AdjustmentDashboardCard(
                     label: 'Current Cost Price', data: currentCostPrice),
@@ -380,12 +351,27 @@ class _CostPriceAdjustmentFormState extends State<CostPriceAdjustmentForm> {
                 ),
               ],
             ),
+            ButtonBar(
+              children: [
+                FilledButton(
+                    onPressed: user == null
+                        ? null
+                        : () => inventoryController.reviewAndAdjustCostPrice(
+                            formKey: _formKey,
+                            uid: user.uid,
+                            stock: widget.stock,
+                            adjustedCostPrice:
+                                costPriceAdjustmentController.text,
+                            reason: selectedReason.label),
+                    child: const Text('Adjust Cost Price'))
+              ],
+            )
           ],
         ));
   }
 }
 
-class SalePriceAdjustmentForm extends StatefulWidget {
+class SalePriceAdjustmentForm extends ConsumerStatefulWidget {
   const SalePriceAdjustmentForm({super.key, required this.stock});
 
   final Stock stock;
@@ -395,7 +381,8 @@ class SalePriceAdjustmentForm extends StatefulWidget {
       _SalePriceAdjustmentFormState();
 }
 
-class _SalePriceAdjustmentFormState extends State<SalePriceAdjustmentForm> {
+class _SalePriceAdjustmentFormState
+    extends ConsumerState<SalePriceAdjustmentForm> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController salePriceAdjustmentController =
@@ -419,6 +406,8 @@ class _SalePriceAdjustmentFormState extends State<SalePriceAdjustmentForm> {
 
   @override
   Widget build(BuildContext context) {
+    var user = ref.watch(userProvider);
+
     var currentSalePrice = currencyController.formatAsPhilippineCurrency(
         amount: widget.stock.salePrice!);
 
@@ -455,7 +444,7 @@ class _SalePriceAdjustmentFormState extends State<SalePriceAdjustmentForm> {
                 },
               ),
             ),
-            Row(
+            /*Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Flexible(
@@ -470,32 +459,52 @@ class _SalePriceAdjustmentFormState extends State<SalePriceAdjustmentForm> {
                   ),
                 ),
               ],
-            ),
-            Row(
-              children: [
-                AdjustmentDashboardCard(
-                    label: 'Current Sale Price', data: currentSalePrice),
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 16.0),
-                    child: TextFormField(
-                      controller: salePriceAdjustmentController,
-                      decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Adjusted Sale Price'),
-                      keyboardType: TextInputType.number,
-                      // You can specify the keyboard type
-                      validator: (value) {
-                        if (value!.isEmpty) {
-                          return 'Please enter a sale price adjustment';
-                        }
-                        return null;
-                      },
+            ),*/
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AdjustmentDashboardCard(
+                      label: 'Current Sale Price', data: currentSalePrice),
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 16.0),
+                      child: TextFormField(
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        controller: salePriceAdjustmentController,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Adjusted Sale Price'),
+                        keyboardType: TextInputType.number,
+                        // You can specify the keyboard type
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Please enter a sale price adjustment';
+                          }
+                          return null;
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            ButtonBar(
+              children: [
+                FilledButton(
+                    onPressed: user == null
+                        ? null
+                        : () => inventoryController.reviewAndAdjustSalePrice(
+                            formKey: _formKey,
+                            uid: user.uid,
+                            stock: widget.stock,
+                            adjustedSalePrice:
+                                salePriceAdjustmentController.text,
+                            reason: selectedReason.label),
+                    child: const Text('Adjust Sale Price'))
+              ],
+            )
           ],
         ));
   }

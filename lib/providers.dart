@@ -43,9 +43,21 @@ final asyncCurrentInventoryDataListProvider = AutoDisposeAsyncNotifierProvider<
   return AsyncCurrentInventoryDataListNotifier();
 });
 
+final asyncIncomingInventoryDataListProvider = AutoDisposeAsyncNotifierProvider<
+    AsyncIncomingInventoryDataListNotifier, List<IncomingInventoryData>>(() {
+  return AsyncIncomingInventoryDataListNotifier();
+});
+
 final categoryIDProvider = StateNotifierProvider<CategoryIDNotifier, String?>(
   (ref) => CategoryIDNotifier(),
 );
+
+final streamItemListProvider = StreamProvider.autoDispose<List<Item>>((ref) {
+  final user = ref.watch(userProfileProvider);
+  String? uid = user.asData!.value.uid;
+
+  return itemController.streamItemDataList(uid: uid);
+});
 
 final streamItemsListByCategoryFilterProvider =
     StreamProvider.autoDispose<List<Item>>((ref) {
@@ -106,6 +118,10 @@ final streamStockListProvider =
   return inventoryController.streamStockList(uid: uid, itemID: itemID);
 });
 
+final purchaseOrderCartNotifierProvider = StateNotifierProvider.autoDispose<
+    PurchaseOrderCartNotifier,
+    List<PurchaseOrderItem>>((ref) => PurchaseOrderCartNotifier());
+
 StreamProvider<List<Supplier>> streamSupplierListProvider =
     StreamProvider((ref) {
   final user = ref.watch(_userProvider);
@@ -132,6 +148,12 @@ final streamInventoryListProvider = StreamProvider.autoDispose((ref) {
   return inventoryController.streamInventoryList(uid: uid);
 });
 
+final streamIncomingInventoryListProvider = StreamProvider.autoDispose((ref) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+  return purchaseOrderController.streamIncomingInventoryList(uid: uid);
+});
+
 final streamInventoryProvider =
     StreamProvider.autoDispose.family<Inventory, String>((ref, itemID) {
   final user = ref.watch(_userProvider);
@@ -153,6 +175,15 @@ final streamTransactionListProvider = StreamProvider.autoDispose
 
   return inventoryController.streamInventoryTransactionList(
       uid: uid, inventory: inventory);
+});
+
+final streamPurchaseOrderProvider = StreamProvider.autoDispose
+    .family<PurchaseOrder, String>((ref, purchaseOrderID) {
+  final user = ref.watch(_userProvider);
+  String uid = user.asData!.value!.uid;
+
+  return purchaseOrderController.streamPurchaseOrder(
+      uid: uid, purchaseOrderID: purchaseOrderID);
 });
 
 final asyncCategorySelectionDataProvider = AsyncNotifierProvider<
@@ -203,6 +234,10 @@ final perishabilityProvider = StateProvider<Perishability>(
 
 final currentInventoryFilterSelectionProvider =
     StateProvider<CurrentInventoryFilter>((ref) => CurrentInventoryFilter.all);
+
+final incomingInventoryFilterSelectionProvider =
+    StateProvider<IncomingInventoryFilter>(
+        (ref) => IncomingInventoryFilter.all);
 
 final supplierSelectionProvider =
     StateNotifierProvider.autoDispose<SupplierSelectionNotifier, Supplier?>(
