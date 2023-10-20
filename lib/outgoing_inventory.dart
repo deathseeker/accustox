@@ -1,5 +1,6 @@
+import 'providers.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models.dart';
 import 'widget_components.dart';
 
@@ -8,76 +9,62 @@ class OutgoingInventory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    return const Expanded(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 16.0),
-            child: GroupTitleWithFilledButton(
-                title: 'Outgoing Inventory',
-                onPressed: () {},
-                buttonLabel: 'New Sales Order'),
+            padding: EdgeInsets.symmetric(vertical: 16.0),
+            child: GroupTitle(
+              title: 'Outgoing Inventory',
+            ),
           ),
-          const Padding(
+/*          Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
             child: OutgoingInventoryFilterChips(),
-          ),
-          const OutgoingInventoryList()
+          ),*/
+          OutgoingInventoryList()
         ],
       ),
     );
   }
 }
 
-class OutgoingInventoryList extends StatelessWidget {
+class OutgoingInventoryList extends ConsumerWidget {
   const OutgoingInventoryList({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    List<OutgoingInventoryCardData> outgoingInventoryList = [
-      OutgoingInventoryCardData(
-          'Customer Name', 'Php 999999.99', 'SO-1234567', [
-        SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456', '999 Units',
-            '999999.99/Unit', 'Php 999999.99'),
-        SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456', '999 Units',
-            '999999.99/Unit', 'Php 999999.99'),
-        SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456', '999 Units',
-            '999999.99/Unit', 'Php 999999.99'),
-        SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456', '999 Units',
-            '999999.99/Unit', 'Php 999999.99'),
-        SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456', '999 Units',
-            '999999.99/Unit', 'Php 999999.99'),
-      ]),
-      OutgoingInventoryCardData(
-          'Customer Name', 'Php 999999.99', 'SO-1234567', [
-        SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456', '999 Units',
-            '999999.99/Unit', 'Php 999999.99')
-      ]),
-      OutgoingInventoryCardData(
-          'Customer Name', 'Php 999999.99', 'SO-1234567', [
-        SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456', '999 Units',
-            '999999.99/Unit', 'Php 999999.99')
-      ]),
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    var asyncSalesOrderList = ref.watch(streamCurrentSalesOrderProvider);
 
-    return Expanded(
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemBuilder: (context, index) {
-          OutgoingInventoryCardData data = outgoingInventoryList[index];
-          return OutgoingInventoryCard(
-              customerName: data.customerName,
-              totalCost: data.totalCost,
-              salesOrderNumber: data.salesOrderNumber,
-              salesOrderItemList: data.salesOrderItemList);
+    return asyncSalesOrderList.when(
+        data: (data) {
+          var salesOrderList = data;
+          return salesOrderList.isEmpty
+              ? const Expanded(
+                  child: ErrorMessage(
+                      errorMessage:
+                          'You currently have no outgoing inventory...'),
+                )
+              : Expanded(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemBuilder: (context, index) {
+                      SalesOrder salesOrder = salesOrderList[index];
+                      return OutgoingInventoryCard(salesOrder: salesOrder);
+                    },
+                    itemCount: salesOrderList.length,
+                    separatorBuilder: (context, index) => const SizedBox(
+                      height: 8.0,
+                    ),
+                  ),
+                );
         },
-        itemCount: outgoingInventoryList.length,
-        separatorBuilder: (context, index) => const SizedBox(
-          height: 8.0,
-        ),
-      ),
-    );
+        error: (e, st) => const Expanded(
+            child: ErrorMessage(errorMessage: 'Something went wrong...')),
+        loading: () => const Expanded(child: LoadingWidget()));
   }
 }
+
+

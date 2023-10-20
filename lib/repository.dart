@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -247,6 +245,45 @@ class NavigationRepository implements NavigationRepositoryInterface {
   navigateToPurchaseOrderDetails({required PurchaseOrder purchaseOrder}) {
     return _services.navigateToPurchaseOrderDetails(purchaseOrder);
   }
+
+  @override
+  navigateToEditPurchaseOrder({required PurchaseOrder purchaseOrder}) {
+    return _services.navigateToEditPurchaseOrder(purchaseOrder);
+  }
+
+  @override
+  navigateToIncomingInventoryManagement(
+      {required PurchaseOrder purchaseOrder}) {
+    return _services.navigateToIncomingInventoryManagement(purchaseOrder);
+  }
+
+  @override
+  navigateToNewInventoryStockFromPurchaseOrder(
+      {required PurchaseOrderItem purchaseOrderItem,
+      required PurchaseOrder purchaseOrder}) {
+    return _services.navigateToNewInventoryStockFromPurchaseOrder(
+        purchaseOrderItem, purchaseOrder);
+  }
+
+  @override
+  navigateToProcessSalesOrder() {
+    return _services.navigateToProcessSalesOrder();
+  }
+
+  @override
+  navigateToCustomerAccountDetails({required Customer customer}) {
+    return _services.navigateToCustomerAccountDetails(customer);
+  }
+
+  @override
+  navigateToSalesOrderDetails({required String salesOrderID}) {
+    return _services.navigateToSalesOrderDetails(salesOrderID);
+  }
+
+  @override
+  navigateToSalesReportDetails({required String dateInYYYYMMDD}) {
+    return _services.navigateToSalesReportDetails(dateInYYYYMMDD);
+  }
 }
 
 class DialogRepository implements DialogInterface {
@@ -372,6 +409,99 @@ class DialogRepository implements DialogInterface {
       required WidgetRef ref}) {
     return _services.editPurchaseItemOrderDialog(
         context, purchaseOrderItem, ref);
+  }
+
+  @override
+  placeOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced}) {
+    return _services.placeOrderDialog(context, uid, purchaseOrder, orderPlaced);
+  }
+
+  @override
+  cancelOrderPlacementDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced}) {
+    return _services.cancelOrderPlacementDialog(
+        context, uid, purchaseOrder, orderPlaced);
+  }
+
+  @override
+  orderConfirmationDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed}) {
+    return _services.orderConfirmationDialog(
+        context, uid, purchaseOrder, orderConfirmed);
+  }
+
+  @override
+  cancelOrderConfirmationDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed}) {
+    return _services.cancelOrderConfirmationDialog(
+        context, uid, purchaseOrder, orderConfirmed);
+  }
+
+  @override
+  cancelPurchaseOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder}) {
+    return _services.cancelPurchaseOrderDialog(context, uid, purchaseOrder);
+  }
+
+  @override
+  receivePurchaseOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder}) {
+    return _services.receivePurchaseOrderDialog(context, uid, purchaseOrder);
+  }
+
+  @override
+  processSetAsRetailStock(
+      {required String uid, required String itemID, required Stock stock}) {
+    return _services.processSetAsRetailStock(uid, itemID, stock);
+  }
+
+  @override
+  setAsRetailStockDialog(
+      {required BuildContext context,
+      required String uid,
+      required String itemID,
+      required Stock stock}) {
+    return _services.setAsRetailStockDialog(context, uid, itemID, stock);
+  }
+
+  @override
+  processRemoveFromRetailStock(
+      {required String uid, required String itemID, required Stock stock}) {
+    return _services.processRemoveFromRetailStock(uid, itemID, stock);
+  }
+
+  @override
+  removeFromRetailStockDialog(
+      {required BuildContext context,
+      required String uid,
+      required String itemID,
+      required Stock stock}) {
+    return _services.removeFromRetailStockDialog(context, uid, itemID, stock);
+  }
+
+  @override
+  addCustomItemOrderDialog(
+      {required BuildContext context,
+      required WidgetRef ref,
+      required RetailItem retailItem}) {
+    return _services.addCustomItemOrderDialog(context, ref, retailItem);
   }
 }
 
@@ -739,6 +869,12 @@ class CustomerRepository implements CustomerInterface {
         customerType: customerType,
         uid: uid);
   }
+
+  @override
+  Stream<CustomerAccount> streamCustomerAccount(
+      {required String uid, required String customerID}) {
+    return _db.streamCustomerAccount(uid, customerID);
+  }
 }
 
 class ScannerRepository implements ScannerInterface {
@@ -754,6 +890,11 @@ class ScannerRepository implements ScannerInterface {
   @override
   Future<String> scanQRCode() {
     return _services.scanQRCode();
+  }
+
+  @override
+  Future<void> streamBarcodes({required WidgetRef ref}) {
+    return _services.streamBarcodes(ref);
   }
 }
 
@@ -835,6 +976,12 @@ class InventoryRepository implements InventoryInterface {
   Stream<List<Stock>> streamStockList(
       {required String uid, required String itemID}) {
     return _db.streamStockList(uid, itemID);
+  }
+
+  @override
+  Stream<List<Stock>> streamRetailStockList(
+      {required String uid, required String itemID}) {
+    return _db.streamRetailStockList(uid, itemID);
   }
 
   @override
@@ -990,6 +1137,28 @@ class InventoryRepository implements InventoryInterface {
     return _services.reviewAndAdjustSalePrice(
         formKey, uid, stock, adjustedSalePrice, reason);
   }
+
+  @override
+  Future<void> addStockToRetailStock(
+      {required String uid, required String itemID, required Stock stock}) {
+    return _db.addStockToRetailStock(uid, itemID, stock);
+  }
+
+  @override
+  Future<void> removeStockFromRetailStock(
+      {required String uid, required String itemID, required Stock stock}) {
+    return _db.removeStockFromRetailStock(uid, itemID, stock);
+  }
+
+  @override
+  Future<void> adjustRetailStockFromSalesOrder(
+      {required String uid,
+      required String itemID,
+      required Stock adjustedStock,
+      required String reason}) {
+    return _db.adjustRetailStockFromSalesOrder(
+        uid, itemID, adjustedStock, reason);
+  }
 }
 
 class DateTimeRepository implements DateTimeInterface {
@@ -1036,6 +1205,17 @@ class DateTimeRepository implements DateTimeInterface {
   String formatDateTimeToYMdjm({required DateTime dateTime}) {
     return _services.formatDateTimeToYMdjm(dateTime);
   }
+
+  @override
+  double leadTimeFromPO(
+      {required DateTime orderPlacedOn, required DateTime orderDeliveredOn}) {
+    return _services.leadTimeFromPO(orderPlacedOn, orderDeliveredOn);
+  }
+
+  @override
+  String formatDateTimeToYYYYMMDD({required DateTime date}) {
+    return _services.formatDateTimeToYYYYMMDD(date);
+  }
 }
 
 class PerishabilityRepository implements PerishabilityInterface {
@@ -1079,6 +1259,11 @@ class CurrencyRepository implements CurrencyInterface {
   @override
   String formatAsPhilippineCurrencyWithoutSymbol({required num amount}) {
     return _services.formatAsPhilippineCurrencyWithoutSymbol(amount);
+  }
+
+  @override
+  String getAveragePrice({required double quantity, required double total}) {
+    return _services.getAveragePrice(quantity, total);
   }
 }
 
@@ -1182,17 +1367,289 @@ class PurchaseOrderRepository implements PurchaseOrderInterface {
   }
 
   @override
-  Stream<List<PurchaseOrder>> streamIncomingInventoryList({required String uid}) {
+  Stream<List<PurchaseOrder>> streamIncomingInventoryList(
+      {required String uid}) {
     return _databaseService.streamIncomingInventoryList(uid);
   }
 
   @override
-  getIncomingInventoryState({required bool orderPlaced, required bool orderConfirmed}) {
-    return _services.getIncomingInventoryState(orderPlaced, orderConfirmed);
+  getIncomingInventoryState(
+      {required bool orderPlaced,
+      required bool orderConfirmed,
+      required bool orderDelivered}) {
+    return _services.getIncomingInventoryState(
+        orderPlaced, orderConfirmed, orderDelivered);
   }
 
   @override
-  Stream<PurchaseOrder> streamPurchaseOrder({required String uid, required String purchaseOrderID}) {
+  Stream<PurchaseOrder> streamPurchaseOrder(
+      {required String uid, required String purchaseOrderID}) {
     return _databaseService.streamPurchaseOrder(uid, purchaseOrderID);
+  }
+
+  @override
+  Future<void> updateOrderPlacedStatus(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced}) {
+    return _databaseService.updateOrderPlacedStatus(
+        uid, purchaseOrder, orderPlaced);
+  }
+
+  @override
+  Future<void> updateOrderConfirmedStatus(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed}) {
+    return _databaseService.updateOrderConfirmedStatus(
+        uid, purchaseOrder, orderConfirmed);
+  }
+
+  @override
+  Future<void> cancelPurchaseOrder(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required String reason}) {
+    return _databaseService.cancelPurchaseOrder(uid, purchaseOrder, reason);
+  }
+
+  @override
+  checkIfPurchaseOrderChanged(
+      {required PurchaseOrder originalPurchaseOrder,
+      required PurchaseOrder newPurchaseOrder}) {
+    return _services.checkIfPurchaseOrderChanged(
+        originalPurchaseOrder, newPurchaseOrder);
+  }
+
+  @override
+  Future<void> updatePurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder}) {
+    return _databaseService.updatePurchaseOrder(uid, purchaseOrder);
+  }
+
+  @override
+  processEditPurchaseOrder(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required PurchaseOrder originalPurchaseOrder,
+      required PurchaseOrder newPurchaseOrder}) {
+    return _services.processEditPurchaseOrder(
+        formKey, uid, originalPurchaseOrder, newPurchaseOrder);
+  }
+
+  @override
+  Future<void> receivePurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder}) {
+    return _databaseService.receivePurchaseOrder(uid, purchaseOrder);
+  }
+
+  @override
+  Future<void> addInventoryStockFromPO(
+      {required String uid,
+      required String itemID,
+      required Stock stock,
+      required Inventory inventory,
+      required double newLeadTime,
+      required PurchaseOrder purchaseOrder}) {
+    return _databaseService.addInventoryStockFromPO(
+        uid, itemID, stock, inventory, newLeadTime, purchaseOrder);
+  }
+
+  @override
+  reviewAndSubmitStockFromPO(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Item item,
+      required double stockLevel,
+      required double costPrice,
+      required String salePrice,
+      required String expirationWarning,
+      required Supplier? supplier,
+      required StockLocation? stockLocation,
+      required DateTime expirationDate,
+      required String batchNumber,
+      required DateTime purchaseDate,
+      required Inventory inventory,
+      required PurchaseOrder purchaseOrder}) {
+    return _services.reviewAndSubmitStockFromPO(
+        formKey,
+        uid,
+        item,
+        stockLevel,
+        costPrice,
+        salePrice,
+        expirationWarning,
+        supplier,
+        stockLocation,
+        expirationDate,
+        batchNumber,
+        purchaseDate,
+        inventory,
+        purchaseOrder);
+  }
+
+  @override
+  Future<void> completeInventoryAndPurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder}) {
+    return _databaseService.completeInventoryAndPurchaseOrder(
+        uid, purchaseOrder);
+  }
+}
+
+class SalesOrderRepository implements SalesOrderInterface {
+  final Services _services;
+  final DatabaseService _databaseService;
+
+  SalesOrderRepository(this._services, this._databaseService);
+
+  @override
+  Stream<List<RetailItem>> streamRetailItemDataList({required String uid}) {
+    return _databaseService.streamRetailItemDataList(uid);
+  }
+
+  @override
+  SalesOrderItem getSalesOrderItem(
+      {required RetailItem retailItem, required double quantity}) {
+    return _services.getSalesOrderItem(retailItem, quantity);
+  }
+
+  @override
+  List<Stock> getAdjustedStocksFromSO(
+      {required RetailItem retailItem, required double quantity}) {
+    return _services.getAdjustedStocksFromSO(retailItem, quantity);
+  }
+
+  @override
+  addSalesOrderItem(
+      {required WidgetRef ref,
+      required RetailItem retailItem,
+      required double stockLimit,
+      required double count}) {
+    return _services.addSalesOrderItem(ref, retailItem, stockLimit, count);
+  }
+
+  @override
+  addCustomSalesOrderItem(
+      {required WidgetRef ref,
+      required RetailItem retailItem,
+      required double stockLimit,
+      required double quantity}) {
+    return _services.addCustomSalesOrderItem(
+        ref, retailItem, stockLimit, quantity);
+  }
+
+  @override
+  String createSalesOrderNumber({required int a}) {
+    return _services.createSalesOrderNumber(a);
+  }
+
+  @override
+  Future<void> addSalesOrder(
+      {required String uid,
+      required SalesOrder salesOrder,
+      required List<Stock> adjustedStockList}) {
+    return _databaseService.addSalesOrder(uid, salesOrder, adjustedStockList);
+  }
+
+  @override
+  Future<void> incrementSaleToDailyDemand(
+      {required String uid, required String itemID, required double sales}) {
+    return _databaseService.incrementSaleToDailyDemand(uid, itemID, sales);
+  }
+
+  @override
+  submitRetailSalesOrder(
+      {required String uid,
+      required List<SalesOrderItem> salesOrderItemList,
+      required String? paymentTerms,
+      required String? orderTotal,
+      required List<Stock> stockList}) {
+    return _services.submitRetailSalesOrder(
+        uid: uid,
+        salesOrderItemList: salesOrderItemList,
+        paymentTerms: paymentTerms,
+        orderTotal: orderTotal,
+        stockList: stockList);
+  }
+
+  @override
+  Future<void> updateInventoryStatisticsOnSale(
+      {required String uid, required String itemID}) {
+    return _databaseService.updateInventoryStatisticsOnSale(uid, itemID);
+  }
+
+  @override
+  Future<void> addAccountSalesOrder(
+      {required String uid,
+      required SalesOrder salesOrder,
+      required List<Stock> adjustedStockList}) {
+    return _databaseService.addAccountSalesOrder(
+        uid, salesOrder, adjustedStockList);
+  }
+
+  @override
+  reviewAndSubmitAccountSalesOrder(
+      {required String uid,
+      required List<SalesOrderItem> salesOrderItemList,
+      required Customer? customer,
+      required String? paymentTerms,
+      required String? orderTotal,
+      required List<Stock> stockList}) {
+    return _services.reviewAndSubmitAccountSalesOrder(
+        uid: uid,
+        salesOrderItemList: salesOrderItemList,
+        customer: customer,
+        paymentTerms: paymentTerms,
+        orderTotal: orderTotal,
+        stockList: stockList);
+  }
+
+  @override
+  Future<SalesOrder> fetchSalesOrder(
+      {required String uid, required String salesOrderID}) {
+    return _databaseService.fetchSalesOrder(uid, salesOrderID);
+  }
+
+  @override
+  Stream<List<SalesOrder>> streamSalesOrders({required String uid}) {
+    return _databaseService.streamSalesOrders(uid);
+  }
+
+  @override
+  Stream<List<SalesOrder>> streamCurrentSalesOrders({required String uid}) {
+    return _databaseService.streamCurrentSalesOrders(uid);
+  }
+}
+
+class StringRepository implements StringInterface {
+  final Services _services;
+
+  StringRepository(this._services);
+
+  @override
+  String removeTrailingZeros({required double value}) {
+    return _services.removeTrailingZeros(value);
+  }
+}
+
+class ReportsRepository implements ReportsInterface {
+  final DatabaseService _databaseService;
+
+  ReportsRepository(this._databaseService);
+
+  @override
+  Future<void> updateDailySalesReport(
+      {required String uid, required SalesOrder salesOrder}) {
+    return _databaseService.updateDailySalesReport(uid, salesOrder);
+  }
+
+  @override
+  Future<SalesReports> fetchSalesReportMasterList({required String uid}) {
+    return _databaseService.fetchSalesReportMasterList(uid);
+  }
+
+  @override
+  Future<DailySalesReport> fetchDailySalesReport({required String uid, required String dateInYYYYMMDD}) {
+    return _databaseService.fetchDailySalesReport(uid, dateInYYYYMMDD);
   }
 }

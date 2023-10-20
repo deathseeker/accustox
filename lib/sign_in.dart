@@ -12,14 +12,15 @@ class SignIn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16.0, 32.0, 16.0, 16.0),
             child: Center(
               child: SizedBox(
-                  height: 200.0,
-                  width: 200.0,
-                  child: Image.asset('assets/Logo_Primary, Merchant.png')),
+                  height: 300.0,
+                  width: 300.0,
+                  child: Image.asset('assets/Logo_Transparent.png')),
             ),
           ),
           googleSignInButton(() async {

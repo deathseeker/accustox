@@ -232,6 +232,42 @@ class NavigationController {
     return _navigationRepository.navigateToPurchaseOrderDetails(
         purchaseOrder: purchaseOrder);
   }
+
+  navigateToEditPurchaseOrder({required PurchaseOrder purchaseOrder}) {
+    return _navigationRepository.navigateToEditPurchaseOrder(
+        purchaseOrder: purchaseOrder);
+  }
+
+  navigateToIncomingInventoryManagement(
+      {required PurchaseOrder purchaseOrder}) {
+    return _navigationRepository.navigateToIncomingInventoryManagement(
+        purchaseOrder: purchaseOrder);
+  }
+
+  navigateToNewInventoryStockFromPurchaseOrder(
+      {required PurchaseOrderItem purchaseOrderItem,
+      required PurchaseOrder purchaseOrder}) {
+    return _navigationRepository.navigateToNewInventoryStockFromPurchaseOrder(
+        purchaseOrderItem: purchaseOrderItem, purchaseOrder: purchaseOrder);
+  }
+
+  navigateToProcessSalesOrder() {
+    return _navigationRepository.navigateToProcessSalesOrder();
+  }
+
+  navigateToCustomerAccountDetails({required Customer customer}) {
+    return _navigationRepository.navigateToCustomerAccountDetails(
+        customer: customer);
+  }
+
+  navigateToSalesOrderDetails({required String salesOrderID}) {
+    return _navigationRepository.navigateToSalesOrderDetails(
+        salesOrderID: salesOrderID);
+  }
+
+  navigateToSalesReportDetails({required String dateInYYYYMMDD}) {
+    return _navigationRepository.navigateToSalesReportDetails(dateInYYYYMMDD: dateInYYYYMMDD);
+  }
 }
 
 final DialogController dialogController = DialogController();
@@ -353,6 +389,108 @@ class DialogController {
       required WidgetRef ref}) {
     return _dialogRepository.editPurchaseItemOrderDialog(
         context: context, purchaseOrderItem: purchaseOrderItem, ref: ref);
+  }
+
+  placeOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced}) {
+    return _dialogRepository.placeOrderDialog(
+        context: context,
+        uid: uid,
+        purchaseOrder: purchaseOrder,
+        orderPlaced: orderPlaced);
+  }
+
+  cancelOrderPlacementDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced}) {
+    return _dialogRepository.cancelOrderPlacementDialog(
+        context: context,
+        uid: uid,
+        purchaseOrder: purchaseOrder,
+        orderPlaced: orderPlaced);
+  }
+
+  orderConfirmationDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed}) {
+    return _dialogRepository.orderConfirmationDialog(
+        context: context,
+        uid: uid,
+        purchaseOrder: purchaseOrder,
+        orderConfirmed: orderConfirmed);
+  }
+
+  cancelOrderConfirmationDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed}) {
+    return _dialogRepository.cancelOrderConfirmationDialog(
+        context: context,
+        uid: uid,
+        purchaseOrder: purchaseOrder,
+        orderConfirmed: orderConfirmed);
+  }
+
+  cancelPurchaseOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder}) {
+    return _dialogRepository.cancelPurchaseOrderDialog(
+        context: context, uid: uid, purchaseOrder: purchaseOrder);
+  }
+
+  receivePurchaseOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder}) {
+    return _dialogRepository.receivePurchaseOrderDialog(
+        context: context, uid: uid, purchaseOrder: purchaseOrder);
+  }
+
+  processSetAsRetailStock(
+      {required String uid, required String itemID, required Stock stock}) {
+    return _dialogRepository.processSetAsRetailStock(
+        uid: uid, itemID: itemID, stock: stock);
+  }
+
+  setAsRetailStockDialog(
+      {required BuildContext context,
+      required String uid,
+      required String itemID,
+      required Stock stock}) {
+    return _dialogRepository.setAsRetailStockDialog(
+        context: context, uid: uid, itemID: itemID, stock: stock);
+  }
+
+  processRemoveFromRetailStock(
+      {required String uid, required String itemID, required Stock stock}) {
+    return _dialogRepository.processRemoveFromRetailStock(
+        uid: uid, itemID: itemID, stock: stock);
+  }
+
+  removeFromRetailStockDialog(
+      {required BuildContext context,
+      required String uid,
+      required String itemID,
+      required Stock stock}) {
+    return _dialogRepository.removeFromRetailStockDialog(
+        context: context, uid: uid, itemID: itemID, stock: stock);
+  }
+
+  addCustomItemOrderDialog(
+      {required BuildContext context,
+      required WidgetRef ref,
+      required RetailItem retailItem}) {
+    return _dialogRepository.addCustomItemOrderDialog(
+        context: context, ref: ref, retailItem: retailItem);
   }
 }
 
@@ -690,6 +828,12 @@ class CustomerController {
         customerType: customerType,
         uid: uid);
   }
+
+  Stream<CustomerAccount> streamCustomerAccount(
+      {required String uid, required String customerID}) {
+    return _customerRepository.streamCustomerAccount(
+        uid: uid, customerID: customerID);
+  }
 }
 
 final ScannerController scannerController = ScannerController();
@@ -703,6 +847,10 @@ class ScannerController {
 
   Future<String> scanQRCode() {
     return _scannerRepository.scanQRCode();
+  }
+
+  Future<void> streamBarcodes({required WidgetRef ref}) {
+    return _scannerRepository.streamBarcodes(ref: ref);
   }
 }
 
@@ -786,6 +934,11 @@ class InventoryController {
   Stream<List<Stock>> streamStockList(
       {required String uid, required String itemID}) {
     return _inventoryRepository.streamStockList(uid: uid, itemID: itemID);
+  }
+
+  Stream<List<Stock>> streamRetailStockList(
+      {required String uid, required String itemID}) {
+    return _inventoryRepository.streamRetailStockList(uid: uid, itemID: itemID);
   }
 
   Future<void> addInventoryStock(
@@ -965,6 +1118,27 @@ class InventoryController {
         adjustedSalePrice: adjustedSalePrice,
         reason: reason);
   }
+
+  Future<void> addStockToRetailStock(
+      {required String uid, required String itemID, required Stock stock}) {
+    return _inventoryRepository.addStockToRetailStock(
+        uid: uid, itemID: itemID, stock: stock);
+  }
+
+  Future<void> removeStockFromRetailStock(
+      {required String uid, required String itemID, required Stock stock}) {
+    return _inventoryRepository.removeStockFromRetailStock(
+        uid: uid, itemID: itemID, stock: stock);
+  }
+
+  Future<void> adjustRetailStockFromSalesOrder(
+      {required String uid,
+      required String itemID,
+      required Stock adjustedStock,
+      required String reason}) {
+    return _inventoryRepository.adjustRetailStockFromSalesOrder(
+        uid: uid, itemID: itemID, adjustedStock: adjustedStock, reason: reason);
+  }
 }
 
 final DateTimeController dateTimeController = DateTimeController();
@@ -1010,6 +1184,16 @@ class DateTimeController {
   String formatDateTimeToYMdjm({required DateTime dateTime}) {
     return _dateTimeRepository.formatDateTimeToYMdjm(dateTime: dateTime);
   }
+
+  double leadTimeFromPO(
+      {required DateTime orderPlacedOn, required DateTime orderDeliveredOn}) {
+    return _dateTimeRepository.leadTimeFromPO(
+        orderPlacedOn: orderPlacedOn, orderDeliveredOn: orderDeliveredOn);
+  }
+
+  String formatDateTimeToYYYYMMDD({required DateTime date}) {
+    return _dateTimeRepository.formatDateTimeToYYYYMMDD(date: date);
+  }
 }
 
 final PerishabilityController perishabilityController =
@@ -1054,6 +1238,11 @@ class CurrencyController {
   String formatAsPhilippineCurrencyWithoutSymbol({required num amount}) {
     return _currencyRepository.formatAsPhilippineCurrencyWithoutSymbol(
         amount: amount);
+  }
+
+  String getAveragePrice({required double quantity, required double total}) {
+    return _currencyRepository.getAveragePrice(
+        quantity: quantity, total: total);
   }
 }
 
@@ -1168,13 +1357,280 @@ class PurchaseOrderController {
   }
 
   getIncomingInventoryState(
-      {required bool orderPlaced, required bool orderConfirmed}) {
+      {required bool orderPlaced,
+      required bool orderConfirmed,
+      required bool orderDelivered}) {
     return _purchaseOrderRepository.getIncomingInventoryState(
-        orderPlaced: orderPlaced, orderConfirmed: orderConfirmed);
+        orderPlaced: orderPlaced,
+        orderConfirmed: orderConfirmed,
+        orderDelivered: orderDelivered);
   }
 
   Stream<PurchaseOrder> streamPurchaseOrder(
-      {required String uid, required String purchaseOrderID}){
-    return _purchaseOrderRepository.streamPurchaseOrder(uid: uid, purchaseOrderID: purchaseOrderID);
+      {required String uid, required String purchaseOrderID}) {
+    return _purchaseOrderRepository.streamPurchaseOrder(
+        uid: uid, purchaseOrderID: purchaseOrderID);
+  }
+
+  Future<void> updateOrderPlacedStatus(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced}) {
+    return _purchaseOrderRepository.updateOrderPlacedStatus(
+        uid: uid, purchaseOrder: purchaseOrder, orderPlaced: orderPlaced);
+  }
+
+  Future<void> updateOrderConfirmedStatus(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed}) {
+    return _purchaseOrderRepository.updateOrderConfirmedStatus(
+        uid: uid, purchaseOrder: purchaseOrder, orderConfirmed: orderConfirmed);
+  }
+
+  Future<void> cancelPurchaseOrder(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required String reason}) {
+    return _purchaseOrderRepository.cancelPurchaseOrder(
+        uid: uid, purchaseOrder: purchaseOrder, reason: reason);
+  }
+
+  checkIfPurchaseOrderChanged(
+      {required PurchaseOrder originalPurchaseOrder,
+      required PurchaseOrder newPurchaseOrder}) {
+    return _purchaseOrderRepository.checkIfPurchaseOrderChanged(
+        originalPurchaseOrder: originalPurchaseOrder,
+        newPurchaseOrder: newPurchaseOrder);
+  }
+
+  Future<void> updatePurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder}) {
+    return _purchaseOrderRepository.updatePurchaseOrder(
+        uid: uid, purchaseOrder: purchaseOrder);
+  }
+
+  processEditPurchaseOrder(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required PurchaseOrder originalPurchaseOrder,
+      required PurchaseOrder newPurchaseOrder}) {
+    return _purchaseOrderRepository.processEditPurchaseOrder(
+        formKey: formKey,
+        uid: uid,
+        originalPurchaseOrder: originalPurchaseOrder,
+        newPurchaseOrder: newPurchaseOrder);
+  }
+
+  Future<void> receivePurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder}) {
+    return _purchaseOrderRepository.receivePurchaseOrder(
+        uid: uid, purchaseOrder: purchaseOrder);
+  }
+
+  Future<void> addInventoryStockFromPO(
+      {required String uid,
+      required String itemID,
+      required Stock stock,
+      required Inventory inventory,
+      required double newLeadTime,
+      required PurchaseOrder purchaseOrder}) {
+    return _purchaseOrderRepository.addInventoryStockFromPO(
+        uid: uid,
+        itemID: itemID,
+        stock: stock,
+        inventory: inventory,
+        newLeadTime: newLeadTime,
+        purchaseOrder: purchaseOrder);
+  }
+
+  reviewAndSubmitStockFromPO(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Item item,
+      required double stockLevel,
+      required double costPrice,
+      required String salePrice,
+      required String expirationWarning,
+      required Supplier? supplier,
+      required StockLocation? stockLocation,
+      required DateTime expirationDate,
+      required String batchNumber,
+      required DateTime purchaseDate,
+      required Inventory inventory,
+      required PurchaseOrder purchaseOrder}) {
+    return _purchaseOrderRepository.reviewAndSubmitStockFromPO(
+        formKey: formKey,
+        uid: uid,
+        item: item,
+        stockLevel: stockLevel,
+        costPrice: costPrice,
+        salePrice: salePrice,
+        expirationWarning: expirationWarning,
+        supplier: supplier,
+        stockLocation: stockLocation,
+        expirationDate: expirationDate,
+        batchNumber: batchNumber,
+        purchaseDate: purchaseDate,
+        inventory: inventory,
+        purchaseOrder: purchaseOrder);
+  }
+
+  Future<void> completeInventoryAndPurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder}) {
+    return _purchaseOrderRepository.completeInventoryAndPurchaseOrder(
+        uid: uid, purchaseOrder: purchaseOrder);
+  }
+}
+
+final SalesOrderController salesOrderController = SalesOrderController();
+
+class SalesOrderController {
+  final SalesOrderRepository _salesOrderRepository =
+      SalesOrderRepository(Services(), DatabaseService());
+
+  Stream<List<RetailItem>> streamRetailItemDataList({required String uid}) {
+    return _salesOrderRepository.streamRetailItemDataList(uid: uid);
+  }
+
+  SalesOrderItem getSalesOrderItem(
+      {required RetailItem retailItem, required double quantity}) {
+    return _salesOrderRepository.getSalesOrderItem(
+        retailItem: retailItem, quantity: quantity);
+  }
+
+  List<Stock> getAdjustedStocksFromSO(
+      {required RetailItem retailItem, required double quantity}) {
+    return _salesOrderRepository.getAdjustedStocksFromSO(
+        retailItem: retailItem, quantity: quantity);
+  }
+
+  addSalesOrderItem(
+      {required WidgetRef ref,
+      required RetailItem retailItem,
+      required double stockLimit,
+      required double count}) {
+    return _salesOrderRepository.addSalesOrderItem(
+        ref: ref, retailItem: retailItem, stockLimit: stockLimit, count: count);
+  }
+
+  addCustomSalesOrderItem(
+      {required WidgetRef ref,
+      required RetailItem retailItem,
+      required double stockLimit,
+      required double quantity}) {
+    return _salesOrderRepository.addCustomSalesOrderItem(
+        ref: ref,
+        retailItem: retailItem,
+        stockLimit: stockLimit,
+        quantity: quantity);
+  }
+
+  String createSalesOrderNumber({required int a}) {
+    return _salesOrderRepository.createSalesOrderNumber(a: a);
+  }
+
+  Future<void> addSalesOrder(
+      {required String uid,
+      required SalesOrder salesOrder,
+      required List<Stock> adjustedStockList}) {
+    return _salesOrderRepository.addSalesOrder(
+        uid: uid, salesOrder: salesOrder, adjustedStockList: adjustedStockList);
+  }
+
+  Future<void> incrementSaleToDailyDemand(
+      {required String uid, required String itemID, required double sales}) {
+    return _salesOrderRepository.incrementSaleToDailyDemand(
+        uid: uid, itemID: itemID, sales: sales);
+  }
+
+  submitRetailSalesOrder(
+      {required String uid,
+      required List<SalesOrderItem> salesOrderItemList,
+      required String? paymentTerms,
+      required String? orderTotal,
+      required List<Stock> stockList}) {
+    return _salesOrderRepository.submitRetailSalesOrder(
+        uid: uid,
+        salesOrderItemList: salesOrderItemList,
+        paymentTerms: paymentTerms,
+        orderTotal: orderTotal,
+        stockList: stockList);
+  }
+
+  Future<void> updateInventoryStatisticsOnSale(
+      {required String uid, required String itemID}) {
+    return _salesOrderRepository.updateInventoryStatisticsOnSale(
+        uid: uid, itemID: itemID);
+  }
+
+  Future<void> addAccountSalesOrder(
+      {required String uid,
+      required SalesOrder salesOrder,
+      required List<Stock> adjustedStockList}) {
+    return _salesOrderRepository.addAccountSalesOrder(
+        uid: uid, salesOrder: salesOrder, adjustedStockList: adjustedStockList);
+  }
+
+  reviewAndSubmitAccountSalesOrder(
+      {required String uid,
+      required List<SalesOrderItem> salesOrderItemList,
+      required Customer? customer,
+      required String? paymentTerms,
+      required String? orderTotal,
+      required List<Stock> stockList}) {
+    return _salesOrderRepository.reviewAndSubmitAccountSalesOrder(
+        uid: uid,
+        salesOrderItemList: salesOrderItemList,
+        customer: customer,
+        paymentTerms: paymentTerms,
+        orderTotal: orderTotal,
+        stockList: stockList);
+  }
+
+  Future<SalesOrder> fetchSalesOrder(
+      {required String uid, required String salesOrderID}) {
+    return _salesOrderRepository.fetchSalesOrder(
+        uid: uid, salesOrderID: salesOrderID);
+  }
+
+  Stream<List<SalesOrder>> streamSalesOrders({required String uid}) {
+    return _salesOrderRepository.streamSalesOrders(uid: uid);
+  }
+
+  Stream<List<SalesOrder>> streamCurrentSalesOrders({required String uid}) {
+    return _salesOrderRepository.streamCurrentSalesOrders(uid: uid);
+  }
+}
+
+final StringController stringController = StringController();
+
+class StringController {
+  final StringRepository _stringRepository = StringRepository(Services());
+
+  String removeTrailingZeros({required double value}) {
+    return _stringRepository.removeTrailingZeros(value: value);
+  }
+}
+
+final ReportsController reportsController = ReportsController();
+
+class ReportsController {
+  final ReportsRepository _reportsRepository =
+      ReportsRepository(DatabaseService());
+
+  Future<void> updateDailySalesReport(
+      {required String uid, required SalesOrder salesOrder}) {
+    return _reportsRepository.updateDailySalesReport(
+        uid: uid, salesOrder: salesOrder);
+  }
+
+  Future<SalesReports> fetchSalesReportMasterList({required String uid}) {
+    return _reportsRepository.fetchSalesReportMasterList(uid: uid);
+  }
+
+  Future<DailySalesReport> fetchDailySalesReport(
+      {required String uid, required String dateInYYYYMMDD}) {
+    return _reportsRepository.fetchDailySalesReport(uid: uid, dateInYYYYMMDD: dateInYYYYMMDD);
   }
 }

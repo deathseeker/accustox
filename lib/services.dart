@@ -1,12 +1,22 @@
-import 'package:accustox/current_inventory_details.dart';
-import 'package:accustox/default_values.dart';
-import 'package:accustox/edit_item.dart';
-import 'package:accustox/enumerated_values.dart';
-import 'package:accustox/move_inventory.dart';
-import 'package:accustox/new_adjustment.dart';
-import 'package:accustox/new_inventory_stock.dart';
-import 'package:accustox/purchase_order_details.dart';
-import 'package:accustox/text_theme.dart';
+import 'dart:async';
+
+import 'package:accustox/customer_account_details.dart';
+import 'package:accustox/incoming_inventory_management.dart';
+import 'package:accustox/new_inventory_stock_from_purchase_order.dart';
+import 'package:accustox/sales_order_details.dart';
+import 'package:accustox/sales_report_details.dart';
+import 'package:audioplayers/audioplayers.dart';
+
+import 'current_inventory_details.dart';
+import 'default_values.dart';
+import 'edit_item.dart';
+import 'edit_purchase_order.dart';
+import 'enumerated_values.dart';
+import 'move_inventory.dart';
+import 'new_adjustment.dart';
+import 'new_inventory_stock.dart';
+import 'purchase_order_details.dart';
+import 'text_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
@@ -26,6 +36,7 @@ import 'login_splash.dart';
 import 'main.dart';
 import 'package:uuid/uuid.dart';
 import 'package:collection/collection.dart';
+import 'package:stream_transform/stream_transform.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 final DatabaseService _db = DatabaseService();
@@ -255,6 +266,45 @@ class Services {
     return navigatorKey.currentState?.push(MaterialPageRoute(
         builder: (context) =>
             PurchaseOrderDetails(purchaseOrder: purchaseOrder)));
+  }
+
+  navigateToEditPurchaseOrder(PurchaseOrder purchaseOrder) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) => EditPurchaseOrder(purchaseOrder)));
+  }
+
+  navigateToIncomingInventoryManagement(PurchaseOrder purchaseOrder) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) =>
+            IncomingInventoryManagement(purchaseOrder: purchaseOrder)));
+  }
+
+  navigateToNewInventoryStockFromPurchaseOrder(
+      PurchaseOrderItem purchaseOrderItem, PurchaseOrder purchaseOrder) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) => NewInventoryStockFromPurchaseOrder(
+              purchaseOrderItem: purchaseOrderItem,
+              purchaseOrder: purchaseOrder,
+            )));
+  }
+
+  navigateToCustomerAccountDetails(Customer customer) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) => CustomerAccountDetails(customer: customer)));
+  }
+
+  navigateToSalesOrderDetails(String salesOrderID) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) => SalesOrderDetails(salesOrderID: salesOrderID)));
+  }
+
+  navigateToSalesReportDetails(String dateInYYYYMMDD) {
+    return navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (context) => SalesReportDetails(date: dateInYYYYMMDD)));
+  }
+
+  navigateToProcessSalesOrder() {
+    return navigatorKey.currentState?.pushNamed('processSalesOrder');
   }
 
   bool hasProfileChanged(
@@ -662,7 +712,8 @@ class Services {
                                     PurchaseOrderItem purchaseOrderItem =
                                         PurchaseOrderItem.fromItem(item,
                                             quantity: quantity!,
-                                            estimatedPrice: estimatedPrice!);
+                                            estimatedPrice: estimatedPrice!,
+                                            addedToInventory: false);
 
                                     snackBarController.showLoadingSnackBar(
                                         message:
@@ -739,7 +790,7 @@ class Services {
                             textInputAction: TextInputAction.next,
                             validator: (value) {
                               if (value!.isEmpty) {
-                                return "Please enter the estimated unit price...";
+                                return "Please enter item quantity...";
                               } else if (double.tryParse(value)! <= 0) {
                                 return 'Please enter a positive number greater than zero...';
                               } else {
@@ -969,6 +1020,90 @@ class Services {
             .showSnackBarError('Something went wrong. Try again later...'));
   }
 
+  addCustomItemOrderDialog(
+      BuildContext context, WidgetRef ref, RetailItem retailItem) {
+    final TextEditingController quantityController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final Item item = Item.fromMap(retailItem.item!);
+    final stockLimit = retailItem.retailStockLevel;
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Add Custom Item Order'),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Form(
+                    key: formKey,
+                    child: Column(
+                      children: [
+                        Text(
+                          '${item.sku} - ${item.itemName}',
+                          style: customTextStyle.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: TextFormField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            controller: quantityController,
+                            decoration: InputDecoration(
+                                border: const OutlineInputBorder(),
+                                labelText:
+                                    'Quantity (in ${item.unitOfMeasurement}s)'),
+                            keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.done,
+                            validator: (value) {
+                              if (value!.isEmpty) {
+                                return "Please enter item quantity...";
+                              } else if (double.tryParse(value)! <= 0) {
+                                return 'Please enter a positive number greater than zero...';
+                              } else {
+                                return null;
+                              }
+                            },
+                          ),
+                        ),
+                        ButtonBar(
+                          children: [
+                            TextButton(
+                                onPressed: () => navigationController
+                                    .navigateToPreviousPage(),
+                                child: const Text('Cancel')),
+                            FilledButton(
+                                onPressed: () {
+                                  var isValid =
+                                      formKey.currentState!.validate();
+                                  var quantity =
+                                      double.tryParse(quantityController.text);
+
+                                  if (isValid) {
+                                    navigationController
+                                        .navigateToPreviousPage();
+                                    salesOrderController
+                                        .addCustomSalesOrderItem(
+                                            ref: ref,
+                                            retailItem: retailItem,
+                                            stockLimit: stockLimit!,
+                                            quantity: quantity!);
+                                  } else {
+                                    null;
+                                  }
+                                },
+                                child: const Text('Confirm'))
+                          ],
+                        )
+                      ],
+                    )),
+              )
+            ],
+          );
+        });
+  }
+
   addStockSubLocationDialog(
       BuildContext context, String uid, StockLocation parentLocation) {
     final TextEditingController locationNameController =
@@ -1139,6 +1274,392 @@ class Services {
         });
   }
 
+  processSetAsRetailStock(String uid, String itemID, Stock stock) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(
+        message: 'Setting stock as available for retail sale...');
+    inventoryController
+        .addStockToRetailStock(uid: uid, itemID: itemID, stock: stock)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('Process successful...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  processRemoveFromRetailStock(String uid, String itemID, Stock stock) {
+    navigationController.navigateToPreviousPage();
+    snackBarController.showLoadingSnackBar(
+        message: 'Setting stock as unavailable for retail sale...');
+    inventoryController
+        .removeStockFromRetailStock(uid: uid, itemID: itemID, stock: stock)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('Process successful...');
+    }).onError((error, stackTrace) => snackBarController
+            .showSnackBarError('Something went wrong. Try again later...'));
+  }
+
+  setAsRetailStockDialog(
+      BuildContext context, String uid, String itemID, Stock stock) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Set As Retail Stock'),
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want set this stock as available for retail sale?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () => dialogController.processSetAsRetailStock(
+                          uid: uid, itemID: itemID, stock: stock),
+                      child: const Text('Confirm'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  removeFromRetailStockDialog(
+      BuildContext context, String uid, String itemID, Stock stock) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Remove From Retail Stock'),
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want remove this stock from availability for retail sale?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () =>
+                          dialogController.processRemoveFromRetailStock(
+                              uid: uid, itemID: itemID, stock: stock),
+                      child: const Text('Confirm'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  placeOrderDialog(BuildContext context, String uid,
+      PurchaseOrder purchaseOrder, bool orderPlaced) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Place Order'),
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Have you placed this order with the supplier?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('No')),
+                  FilledButton(
+                      onPressed: () => purchaseOrderController
+                              .updateOrderPlacedStatus(
+                                  uid: uid,
+                                  purchaseOrder: purchaseOrder,
+                                  orderPlaced: orderPlaced)
+                              .whenComplete(() {
+                            navigationController.navigateToPreviousPage();
+                            snackBarController
+                                .showSnackBar('Status successfully updated...');
+                          }),
+                      child: const Text('Yes'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  cancelOrderPlacementDialog(BuildContext context, String uid,
+      PurchaseOrder purchaseOrder, bool orderPlaced) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Cancel Order Placement'),
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to cancel the confirmation of order placement with the supplier?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('No')),
+                  FilledButton(
+                      onPressed: () {
+                        if (orderPlaced) {
+                          purchaseOrderController
+                              .updateOrderPlacedStatus(
+                                  uid: uid,
+                                  purchaseOrder: purchaseOrder,
+                                  orderPlaced: orderPlaced)
+                              .whenComplete(() {
+                            navigationController.navigateToPreviousPage();
+                            snackBarController
+                                .showSnackBar('Status successfully updated...');
+                          });
+                        } else {
+                          purchaseOrderController.updateOrderConfirmedStatus(
+                              uid: uid,
+                              purchaseOrder: purchaseOrder,
+                              orderConfirmed: false);
+                          purchaseOrderController
+                              .updateOrderPlacedStatus(
+                                  uid: uid,
+                                  purchaseOrder: purchaseOrder,
+                                  orderPlaced: orderPlaced)
+                              .whenComplete(() {
+                            navigationController.navigateToPreviousPage();
+                            snackBarController
+                                .showSnackBar('Status successfully updated...');
+                          });
+                        }
+                      },
+                      child: const Text('Yes'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  orderConfirmationDialog(BuildContext context, String uid,
+      PurchaseOrder purchaseOrder, bool orderConfirmed) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Confirm Order'),
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to confirm order acceptance by the supplier?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('No')),
+                  FilledButton(
+                      onPressed: () => purchaseOrderController
+                              .updateOrderConfirmedStatus(
+                                  uid: uid,
+                                  purchaseOrder: purchaseOrder,
+                                  orderConfirmed: orderConfirmed)
+                              .whenComplete(() {
+                            navigationController.navigateToPreviousPage();
+                            snackBarController
+                                .showSnackBar('Status successfully updated...');
+                          }),
+                      child: const Text('Yes'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  cancelOrderConfirmationDialog(BuildContext context, String uid,
+      PurchaseOrder purchaseOrder, bool orderConfirmed) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Cancel Order Confirmation'),
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to cancel order confirmation by the supplier?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('No')),
+                  FilledButton(
+                      onPressed: () => purchaseOrderController
+                              .updateOrderConfirmedStatus(
+                                  uid: uid,
+                                  purchaseOrder: purchaseOrder,
+                                  orderConfirmed: orderConfirmed)
+                              .whenComplete(() {
+                            navigationController.navigateToPreviousPage();
+                            snackBarController
+                                .showSnackBar('Status successfully updated...');
+                          }),
+                      child: const Text('Yes'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  cancelPurchaseOrderDialog(
+      BuildContext context, String uid, PurchaseOrder purchaseOrder) {
+    GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    TextEditingController reasonController = TextEditingController();
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Void Purchase Order'),
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to void this purchase order?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Form(
+                  key: formKey,
+                  child: TextFormField(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    controller: reasonController,
+                    decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Reason (Required)'),
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.done,
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return "Please enter a reason for the cancellation";
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('No')),
+                  FilledButton(
+                      onPressed: () {
+                        bool isValid = formKey.currentState!.validate();
+                        if (isValid) {
+                          snackBarController.showLoadingSnackBar(
+                              message: 'Voiding your purchase order...');
+                          navigateToPreviousPage();
+                          navigateToPreviousPage();
+                          purchaseOrderController
+                              .cancelPurchaseOrder(
+                                  uid: uid,
+                                  purchaseOrder: purchaseOrder,
+                                  reason: reasonController.text)
+                              .whenComplete(() {
+                            snackBarController.hideCurrentSnackBar();
+                            snackBarController.showSnackBar(
+                                'Purchase order successfully voided...');
+                          });
+                        } else {
+                          null;
+                        }
+                      },
+                      child: const Text('Yes'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
+  receivePurchaseOrderDialog(
+      BuildContext context, String uid, PurchaseOrder purchaseOrder) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SimpleDialog(
+            title: const Text('Receive Order'),
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Do you want to confirm receipt of order from the supplier?',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              ButtonBar(
+                children: [
+                  TextButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('No')),
+                  FilledButton(
+                      onPressed: () => purchaseOrderController
+                              .receivePurchaseOrder(
+                            uid: uid,
+                            purchaseOrder: purchaseOrder,
+                          )
+                              .whenComplete(() {
+                            navigationController.navigateToPreviousPage();
+                            navigationController.navigateToPreviousPage();
+                            snackBarController
+                                .showSnackBar('Order received...');
+                          }),
+                      child: const Text('Yes'))
+                ],
+              )
+            ],
+          );
+        });
+  }
+
   processRemoveSupplier(String uid, Supplier supplier) {
     navigationController.navigateToPreviousPage();
     snackBarController.showLoadingSnackBar(
@@ -1238,6 +1759,118 @@ class Services {
 
     return qrCodeData;
   }
+
+  Future<void> streamBarcodes(WidgetRef ref) async {
+    Map<String, DateTime> barcodeMap = {};
+    final player = AudioPlayer();
+    var futureRetailItemList = ref.watch(streamRetailItemListProvider.future);
+    var retailItemList = await futureRetailItemList;
+    StreamSubscription subscription;
+
+    Future<RetailItem?> getRetailItem(String barcode) async {
+      var item = retailItemList.firstWhereOrNull(
+          (retailItem) => Item.fromMap(retailItem.item!).ean == barcode);
+
+      return item;
+    }
+
+    Future<void> checkAndAddBarcode(String barcode) async {
+      DateTime currentTimestamp = DateTime.now();
+
+      if (barcodeMap.containsKey(barcode)) {
+        DateTime previousTimestamp = barcodeMap[barcode]!;
+        Duration interval = currentTimestamp.difference(previousTimestamp);
+        if (interval.inSeconds < 3) {
+          return;
+        }
+      }
+
+      var retailItem = await getRetailItem(barcode);
+
+      if (retailItem != null) {
+        barcodeMap[barcode] = currentTimestamp;
+        await player.play(AssetSource('Barcode-scanner-beep-sound.mp3'));
+        await addSalesOrderItemViaScan(ref, retailItem);
+      }
+    }
+
+    var stream = FlutterBarcodeScanner.getBarcodeStreamReceiver(
+      '#ff6666',
+      'Done',
+      true,
+      ScanMode.BARCODE,
+    );
+
+    subscription = stream!
+        .throttle(
+            const Duration(
+              milliseconds: 500,
+            ),
+            trailing: false)
+        .listen((barcode) async {});
+
+    subscription.onData((barcode) async {
+      if (barcode == '-1') {
+        subscription.cancel();
+      } else {
+        await checkAndAddBarcode(barcode);
+      }
+    });
+  }
+
+/*  Future<void> streamBarcodes(WidgetRef ref) async {
+    Map<String, DateTime> barcodeMap = {};
+    final player = AudioPlayer();
+    var futureRetailItemList = ref.watch(streamRetailItemListProvider.future);
+    var retailItemList = await futureRetailItemList;
+    RetailItem? currentItem = null;
+
+    Future<RetailItem?> getRetailItem(String barcode) async {
+      var item = retailItemList.firstWhereOrNull(
+          (retailItem) => Item.fromMap(retailItem.item!).ean == barcode);
+
+      return item;
+    }
+
+    void checkAndAddBarcode(String barcode) async {
+      DateTime currentTimestamp = DateTime.now();
+
+      if (!barcodeMap.containsKey(barcode)) {
+        var retailItem = await getRetailItem(barcode);
+
+        if (retailItem != null) {
+          barcodeMap[barcode] = DateTime.now();
+          currentItem = retailItem;
+          await player.play(AssetSource('Barcode-scanner-beep-sound.mp3'));
+          await addSalesOrderItemViaScan(ref, retailItem);
+
+        }
+      } else {
+        DateTime previousTimestamp = barcodeMap[barcode]!;
+        Duration interval = currentTimestamp.difference(previousTimestamp);
+        var retailItem = currentItem;
+
+        if (retailItem != null && interval.inSeconds >= 3) {
+          barcodeMap[barcode] = DateTime.now();
+          print('Interval: ${interval.inSeconds}');
+          await player.play(AssetSource('Barcode-scanner-beep-sound.mp3'));
+          await addSalesOrderItemViaScan(ref, retailItem);
+
+        }
+      }
+    }
+
+    FlutterBarcodeScanner.getBarcodeStreamReceiver(
+      '#ff6666',
+      'Done',
+      true,
+      ScanMode.BARCODE,
+    )!
+        .listen((barcode) {
+      print('Barcode passed: $barcode');
+      checkAndAddBarcode(barcode);
+    });
+  }*/
 
   String nameImage(String uid) {
     String strUuid = uuid.v4();
@@ -1358,7 +1991,8 @@ class Services {
           purchaseDate: currentStock.purchaseDate,
           inventoryCreatedOn: currentStock.inventoryCreatedOn,
           expirationWarning: currentStock.expirationWarning,
-          stockID: stockID);
+          stockID: stockID,
+          forRetailSale: currentStock.forRetailSale);
 
       snackBarController.showLoadingSnackBar(message: "Moving stock...");
 
@@ -1418,7 +2052,8 @@ class Services {
           purchaseDate: purchaseDate,
           inventoryCreatedOn: DateTime.now(),
           expirationWarning: expirationWarningDouble,
-          stockID: stockID);
+          stockID: stockID,
+          forRetailSale: false);
 
       snackBarController.showLoadingSnackBar(message: "Adding stock...");
 
@@ -1429,6 +2064,73 @@ class Services {
               stock: stock,
               inventory: inventory,
               newLeadTime: newLeadTimeDouble!)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar("Item successfully added...");
+
+        navigationController.navigateToPreviousPage();
+      });
+    } else {
+      showSnackBarError('Kindly review the stock information...');
+    }
+  }
+
+  reviewAndSubmitStockFromPO(
+      GlobalKey<FormState> formKey,
+      String uid,
+      Item item,
+      double stockLevel,
+      double costPrice,
+      String salePrice,
+      String expirationWarning,
+      Supplier? supplier,
+      StockLocation? stockLocation,
+      DateTime expirationDate,
+      String batchNumber,
+      DateTime purchaseDate,
+      Inventory inventory,
+      PurchaseOrder purchaseOrder) {
+    bool isValid = formKey.currentState!.validate();
+
+    if (stockLocation == null) {
+      snackBarController
+          .showSnackBarError("Please add the stock location to continue");
+    } else if (supplier == null) {
+      snackBarController
+          .showSnackBarError("Please add the supplier to continue");
+    } else if (isValid) {
+      var stockID = itemController.getItemID();
+      var salePriceDouble = double.tryParse(salePrice);
+      var expirationWarningDouble = double.tryParse(expirationWarning);
+      var newLeadTime = dateTimeController.leadTimeFromPO(
+          orderPlacedOn: purchaseOrder.orderPlacedOn!,
+          orderDeliveredOn: purchaseOrder.orderDeliveredOn!);
+
+      Stock stock = Stock(
+          item: item.toFirestore(),
+          supplier: supplier.toFirestore(),
+          stockLevel: stockLevel,
+          stockLocation: stockLocation.toFirestore(),
+          expirationDate: expirationDate,
+          batchNumber: batchNumber,
+          costPrice: costPrice,
+          salePrice: salePriceDouble,
+          purchaseDate: purchaseDate,
+          inventoryCreatedOn: DateTime.now(),
+          expirationWarning: expirationWarningDouble,
+          stockID: stockID,
+          forRetailSale: false);
+
+      snackBarController.showLoadingSnackBar(message: "Adding stock...");
+
+      purchaseOrderController
+          .addInventoryStockFromPO(
+              uid: uid,
+              itemID: item.itemID!,
+              stock: stock,
+              inventory: inventory,
+              newLeadTime: newLeadTime,
+              purchaseOrder: purchaseOrder)
           .whenComplete(() {
         snackBarController.hideCurrentSnackBar();
         snackBarController.showSnackBar("Item successfully added...");
@@ -1545,7 +2247,8 @@ class Services {
                 purchaseDate: purchaseDate,
                 inventoryCreatedOn: DateTime.now(),
                 expirationWarning: expirationWarningDouble,
-                stockID: stockID);
+                stockID: stockID,
+                forRetailSale: false);
 
             Inventory inventory = Inventory(
                 item: item.toFirestore(),
@@ -1580,6 +2283,81 @@ class Services {
     }
   }
 
+  reviewAndSubmitAccountSalesOrder(
+      {required String uid,
+      required List<SalesOrderItem> salesOrderItemList,
+      required Customer? customer,
+      required String? paymentTerms,
+      required String? orderTotal,
+      required List<Stock> stockList}) {
+    var salesOrderID = itemController.getItemID();
+    List<Map>? itemOrders = [];
+
+    for (var item in salesOrderItemList) {
+      itemOrders.add(item.toMap());
+    }
+
+    if (customer != null) {
+      SalesOrder salesOrder = SalesOrder(
+          customer: customer.toMap(),
+          transactionMadeOn: DateTime.now(),
+          paymentTerms: paymentTerms,
+          itemOrders: itemOrders,
+          orderTotal: orderTotal,
+          salesOrderID: salesOrderID);
+
+      snackBarController.showLoadingSnackBar(
+          message: 'Creating sales order....');
+
+      salesOrderController
+          .addAccountSalesOrder(
+              uid: uid, salesOrder: salesOrder, adjustedStockList: stockList)
+          .whenComplete(() {
+        snackBarController.hideCurrentSnackBar();
+        snackBarController.showSnackBar('Sales order successfully created...');
+        navigateToPreviousPage();
+        navigateToPreviousPage();
+      });
+    } else {
+      snackBarController.showSnackBarError(
+          'Please provide a customer account for this sale...');
+    }
+  }
+
+  submitRetailSalesOrder(
+      {required String uid,
+      required List<SalesOrderItem> salesOrderItemList,
+      required String? paymentTerms,
+      required String? orderTotal,
+      required List<Stock> stockList}) {
+    var salesOrderID = itemController.getItemID();
+    List<Map>? itemOrders = [];
+
+    for (var item in salesOrderItemList) {
+      itemOrders.add(item.toMap());
+    }
+
+    SalesOrder salesOrder = SalesOrder(
+        customer: {},
+        transactionMadeOn: DateTime.now(),
+        paymentTerms: paymentTerms,
+        itemOrders: itemOrders,
+        orderTotal: orderTotal,
+        salesOrderID: salesOrderID);
+
+    snackBarController.showLoadingSnackBar(message: 'Creating sales order....');
+
+    salesOrderController
+        .addSalesOrder(
+            uid: uid, salesOrder: salesOrder, adjustedStockList: stockList)
+        .whenComplete(() {
+      snackBarController.hideCurrentSnackBar();
+      snackBarController.showSnackBar('Sales order successfully created...');
+      navigateToPreviousPage();
+      navigateToPreviousPage();
+    });
+  }
+
   reviewAndSubmitPurchaseOrder(
       {required GlobalKey<FormState> formKey,
       required String uid,
@@ -1604,17 +2382,19 @@ class Services {
         itemOrderList.add(item.toMap());
       }
       PurchaseOrder purchaseOrder = PurchaseOrder(
-          supplier: supplier.toFirestore(),
-          deliveryAddress: deliveryAddress,
-          expectedDeliveryDate: expectedDeliveryDate,
-          orderPlaced: false,
-          orderConfirmed: false,
-          orderPlacedOn: defaultDateTime,
-          orderConfirmedOn: defaultDateTime,
-          deliveryConfirmedOn: defaultDateTime,
-          itemOrderList: itemOrderList,
-          purchaseOrderID: purchaseOrderID,
-          orderCreatedOn: DateTime.now());
+        supplier: supplier.toFirestore(),
+        deliveryAddress: deliveryAddress,
+        expectedDeliveryDate: expectedDeliveryDate,
+        orderPlaced: false,
+        orderConfirmed: false,
+        orderPlacedOn: defaultDateTime,
+        orderConfirmedOn: defaultDateTime,
+        orderDeliveredOn: defaultDateTime,
+        itemOrderList: itemOrderList,
+        purchaseOrderID: purchaseOrderID,
+        orderCreatedOn: DateTime.now(),
+        orderDelivered: false,
+      );
       snackBarController.showLoadingSnackBar(
           message: 'Creating purchase order....');
 
@@ -1743,6 +2523,20 @@ class Services {
     });
   }
 
+  bool checkIfPurchaseOrderChanged(
+      PurchaseOrder originalPurchaseOrder, PurchaseOrder newPurchaseOrder) {
+    var equatableOriginal =
+        EquatablePurchaseOrder.fromPurchaseOrder(originalPurchaseOrder);
+    var equatableNew =
+        EquatablePurchaseOrder.fromPurchaseOrder(newPurchaseOrder);
+
+    if (equatableOriginal == equatableNew) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
   bool checkIfItemChanged(Item originalItem, ItemChangeNotifier notifier) {
     if (notifier.itemName != originalItem.itemName ||
         notifier.manufacturer != originalItem.manufacturer ||
@@ -1794,13 +2588,16 @@ class Services {
     }
   }
 
-  getIncomingInventoryState(bool orderPlaced, bool orderConfirmed) {
+  getIncomingInventoryState(
+      bool orderPlaced, bool orderConfirmed, bool orderDelivered) {
     if (orderPlaced == false) {
       return IncomingInventoryState.forPlacement;
     } else if (orderConfirmed == false) {
       return IncomingInventoryState.forConfirmation;
-    } else {
+    } else if (orderConfirmed == true && orderDelivered == false) {
       return IncomingInventoryState.forDelivery;
+    } else if (orderDelivered == true) {
+      return IncomingInventoryState.forInventory;
     }
   }
 
@@ -1833,6 +2630,12 @@ class Services {
 
   Timestamp dateTimeToTimestamp(DateTime dateTime) {
     return Timestamp.fromDate(dateTime);
+  }
+
+  double leadTimeFromPO(DateTime orderPlacedOn, DateTime orderDeliveredOn) {
+    int leadTime = orderDeliveredOn.difference(orderPlacedOn).inDays;
+
+    return leadTime.toDouble();
   }
 
   Future<DateTime?> selectDate(BuildContext context, DateTime initialDate,
@@ -1895,6 +2698,11 @@ class Services {
     return formatter.format(amount);
   }
 
+  String formatDateTimeToYYYYMMDD(DateTime date) {
+    final formattedDateTime = DateFormat('yyyyMMdd');
+    return formattedDateTime.format(date);
+  }
+
   String formatDateTimeToYMd(DateTime dateTime) {
     DateFormat formattedDateTime = DateFormat.yMd();
     return formattedDateTime.format(dateTime);
@@ -1942,6 +2750,32 @@ class Services {
     return reorderPoint;
   }
 
+  Map<String, dynamic> getInventoryStatisticsOnSale(
+    Inventory inventory,
+    double currentInventoryDepletionValue,
+    double stockLevelDepletion,
+  ) {
+    double? safetyStockLevel = statisticsController.getSafetyStockLevel(
+        maximumLeadTime: inventory.maximumLeadTime!,
+        maximumDailyDemand: inventory.maximumDailyDemand!,
+        averageDailyDemand: inventory.averageDailyDemand!,
+        averageLeadTime: inventory.averageLeadTime!);
+
+    double? reorderPoint = statisticsController.getReorderPoint(
+        averageLeadTime: inventory.averageLeadTime!,
+        averageDailyDemand: inventory.averageDailyDemand!,
+        safetyStockLevel: safetyStockLevel);
+
+    Map<String, dynamic> data = {
+      'currentInventory': FieldValue.increment(currentInventoryDepletionValue),
+      'stockLevel': FieldValue.increment(stockLevelDepletion),
+      'safetyStockLevel': safetyStockLevel,
+      'reorderPoint': reorderPoint,
+    };
+
+    return data;
+  }
+
   Map<String, dynamic> getInventoryStatisticsOnStockAdd(Inventory inventory,
       double newLeadTime, double stockLevel, double costPrice) {
     var oldMaximumLeadTime = inventory.maximumLeadTime;
@@ -1979,7 +2813,6 @@ class Services {
   }
 
   bool isPositiveDoubleBelowOrEqualToCount(String input, double maxCount) {
-    // Check if the input is a valid number and greater than or equal to 0.
     double? number = double.tryParse(input);
     return number != null && number >= 0 && number <= maxCount;
   }
@@ -2024,9 +2857,272 @@ class Services {
     if (length < 8) {
       int numberOfZerosToAdd = 8 - length;
       String zeros = '0' * numberOfZerosToAdd;
-      return 'PO-$zeros$aString';
+      return 'SO-$zeros$aString';
     } else {
-      return 'PO-$aString';
+      return 'SO-$aString';
     }
   }
+
+  processEditPurchaseOrder(GlobalKey<FormState> formKey, String uid,
+      PurchaseOrder originalPurchaseOrder, PurchaseOrder newPurchaseOrder) {
+    bool isValid = formKey.currentState!.validate();
+    bool hasChanges = purchaseOrderController.checkIfPurchaseOrderChanged(
+        originalPurchaseOrder: originalPurchaseOrder,
+        newPurchaseOrder: newPurchaseOrder);
+
+    if (isValid) {
+      if (hasChanges) {
+        snackBarController.showLoadingSnackBar(
+            message: 'Updating your purchase order...');
+
+        purchaseOrderController
+            .updatePurchaseOrder(uid: uid, purchaseOrder: newPurchaseOrder)
+            .whenComplete(() {
+          snackBarController.hideCurrentSnackBar();
+          navigationController.navigateToPreviousPage();
+          navigationController.navigateToPreviousPage();
+          snackBarController
+              .showSnackBar('Purchase order successfully updated...');
+        });
+      } else {
+        snackBarController.showSnackBarError(
+            'You have made no changes to this purchase order');
+      }
+    } else {
+      snackBarController
+          .showSnackBarError('Kindly review the purchase order information...');
+    }
+  }
+
+  SalesOrderItem getSalesOrderItem(RetailItem retailItem, double quantity) {
+    var retailStocks =
+        retailItem.retailStocks!.map((e) => Stock.fromMap(e)).toList();
+
+    retailStocks
+        .sort((a, b) => a.inventoryCreatedOn!.compareTo(b.inventoryCreatedOn!));
+
+    double getSubtotalFromStockList(List<Stock> retailStocks, double quantity) {
+      double subtotal = 0.0;
+      for (var stock in retailStocks) {
+        if (stock.stockLevel! >= quantity) {
+          subtotal += quantity * stock.salePrice!;
+          break;
+        } else {
+          subtotal += stock.stockLevel! * stock.salePrice!;
+          quantity -= stock.stockLevel!;
+        }
+      }
+      return subtotal;
+    }
+
+    var subtotal = getSubtotalFromStockList(retailStocks, quantity);
+
+    return SalesOrderItem(
+        item: retailItem.item!, quantity: quantity, subtotal: subtotal);
+  }
+
+  List<Stock> getAdjustedStocksFromSO(RetailItem retailItem, double quantity) {
+    var retailStocks =
+        retailItem.retailStocks!.map((e) => Stock.fromMap(e)).toList();
+
+    retailStocks
+        .sort((a, b) => a.inventoryCreatedOn!.compareTo(b.inventoryCreatedOn!));
+
+    List<Stock> adjustedStocks = [];
+    double remainingQuantity = quantity; // Initialize the local variable.
+
+    for (var stock in retailStocks) {
+      if (remainingQuantity > 0) {
+        if (stock.stockLevel! >= remainingQuantity) {
+          stock.stockLevel = stock.stockLevel! - remainingQuantity;
+          adjustedStocks.add(stock);
+          remainingQuantity = 0; // Update the remaining quantity.
+        } else {
+          double usedQuantity = stock.stockLevel!;
+          stock.stockLevel = 0;
+          adjustedStocks.add(stock);
+          remainingQuantity -= usedQuantity;
+        }
+      } else {
+        adjustedStocks.add(stock);
+      }
+    }
+
+    return adjustedStocks;
+  }
+
+/*  List<Stock> getAdjustedStocksFromSO(RetailItem retailItem, double quantity) {
+    var retailStocks =
+        retailItem.retailStocks!.map((e) => Stock.fromMap(e)).toList();
+
+    retailStocks
+        .sort((a, b) => a.inventoryCreatedOn!.compareTo(b.inventoryCreatedOn!));
+
+    List<Stock> adjustedStocks = [];
+
+    for (var stock in retailStocks) {
+      if (quantity > 0) {
+        if (stock.stockLevel! >= quantity) {
+          stock.stockLevel = stock.stockLevel! - quantity;
+          adjustedStocks.add(stock);
+          quantity = 0;
+        } else {
+          stock.stockLevel = 0;
+          adjustedStocks.add(stock);
+          quantity -= stock.stockLevel!;
+        }
+      } else {
+        adjustedStocks.add(stock);
+      }
+    }
+
+    return adjustedStocks;
+  }*/
+
+  addSalesOrderItem(
+      WidgetRef ref, RetailItem retailItem, double stockLimit, double count) {
+    bool atLimit = stockLimit <= count;
+
+    if (atLimit) {
+      stockLimit == 0.0
+          ? snackBarController.showSnackBarError(
+              'You have no stock available to fulfill this order...')
+          : snackBarController.showSnackBarError(
+              'You do not have enough stock to fulfill additional orders for this item...');
+    } else {
+      ++count;
+      SalesOrderItem salesOrderItem = salesOrderController.getSalesOrderItem(
+          retailItem: retailItem, quantity: count);
+
+      List<Stock> adjustedStockList = salesOrderController
+          .getAdjustedStocksFromSO(retailItem: retailItem, quantity: count);
+
+      ref.read(salesOrderCartNotifierProvider.notifier).addItem(salesOrderItem);
+      ref
+          .read(adjustedStockListNotifierProvider.notifier)
+          .updateList(adjustedStockList);
+    }
+  }
+
+  Future<void> addSalesOrderItemViaScan(
+    WidgetRef ref,
+    RetailItem retailItem,
+  ) async {
+    var count = 0.0;
+    var item = Item.fromMap(retailItem.item!);
+    var salesOrderCart = ref.watch(salesOrderCartNotifierProvider);
+    var orderItem = salesOrderCart.firstWhereOrNull(
+        (salesOrderItem) => salesOrderItem.item?['itemID'] == item.itemID);
+    if (orderItem != null) {
+      count = orderItem.quantity!;
+      count++;
+      SalesOrderItem salesOrderItem = salesOrderController.getSalesOrderItem(
+          retailItem: retailItem, quantity: count);
+
+      List<Stock> adjustedStockList = salesOrderController
+          .getAdjustedStocksFromSO(retailItem: retailItem, quantity: count);
+
+      ref.read(salesOrderCartNotifierProvider.notifier).addItem(salesOrderItem);
+      ref
+          .read(adjustedStockListNotifierProvider.notifier)
+          .updateList(adjustedStockList);
+    } else {
+      count++;
+      SalesOrderItem salesOrderItem = salesOrderController.getSalesOrderItem(
+          retailItem: retailItem, quantity: count);
+
+      List<Stock> adjustedStockList = salesOrderController
+          .getAdjustedStocksFromSO(retailItem: retailItem, quantity: count);
+
+      ref.read(salesOrderCartNotifierProvider.notifier).addItem(salesOrderItem);
+      ref
+          .read(adjustedStockListNotifierProvider.notifier)
+          .updateList(adjustedStockList);
+    }
+  }
+
+  addCustomSalesOrderItem(WidgetRef ref, RetailItem retailItem,
+      double stockLimit, double quantity) {
+    bool beyondLimit = stockLimit < quantity;
+
+    if (beyondLimit) {
+      stockLimit == 0.0
+          ? snackBarController.showSnackBarError(
+              'You have no stock available to fulfill this order...')
+          : snackBarController.showSnackBarError(
+              'You do not have enough stock to fulfill additional orders for this item...');
+    } else {
+      SalesOrderItem salesOrderItem = salesOrderController.getSalesOrderItem(
+          retailItem: retailItem, quantity: quantity);
+
+      List<Stock> adjustedStockList = salesOrderController
+          .getAdjustedStocksFromSO(retailItem: retailItem, quantity: quantity);
+
+      ref.read(salesOrderCartNotifierProvider.notifier).addItem(salesOrderItem);
+      ref
+          .read(adjustedStockListNotifierProvider.notifier)
+          .updateList(adjustedStockList);
+    }
+  }
+
+  String removeTrailingZeros(double value) {
+    String stringValue = value.toString();
+    if (stringValue.contains('.')) {
+      stringValue = stringValue.replaceAll(RegExp(r'0*$'), '');
+
+      stringValue = stringValue.replaceAll(RegExp(r'\.$'), '');
+    }
+    return stringValue;
+  }
+
+  String getAveragePrice(double quantity, double total) {
+    var average = total / quantity;
+    var averageAsCurrency = currencyController
+        .formatAsPhilippineCurrencyWithoutSymbol(amount: average);
+
+    return averageAsCurrency;
+  }
+
+  double averageInventory(double beginningInventory, double currentInventory) {
+    var value = (beginningInventory + currentInventory) / 2;
+
+    return value;
+  }
+
+  double costOfGoodsSold(double beginningInventory,
+      double purchasesDuringThePeriod, double currentInventory) {
+    var value =
+        beginningInventory + purchasesDuringThePeriod - currentInventory;
+
+    return value;
+  }
+
+  double stockTurnOverRate(double costOfGoodsSold, double averageInventory) {
+    var value = costOfGoodsSold / averageInventory;
+
+    return value;
+  }
+
+  double daysOfInventoryOnHand(
+      double averageInventoryValue, double costOfGoodsSold, int numberOfDays) {
+    var numberOfDaysDouble = numberOfDays.toDouble();
+    var value = averageInventoryValue / (costOfGoodsSold / numberOfDaysDouble);
+    return value;
+  }
+
+  double stockToSalesRatio(
+      double averageInventoryValue, double netSalesDuringThePeriod) {
+    var value = averageInventoryValue / netSalesDuringThePeriod;
+
+    return value;
+  }
+
+  double sellThroughRate(
+      double salesDuringThePeriod, double beginningInventory) {
+    var value = salesDuringThePeriod / beginningInventory;
+
+    return value;
+  }
+
+
 }

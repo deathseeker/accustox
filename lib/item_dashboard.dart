@@ -1,4 +1,4 @@
-import 'package:accustox/providers.dart';
+import 'providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'controllers.dart';
@@ -26,8 +26,8 @@ class ItemDashboard extends StatelessWidget {
           InventorySummary(
             item: item,
           ),
-          const GroupTitleWithPeriodMenu(title: 'Inventory Metrics'),
-          const InventoryMetrics()
+/*          const GroupTitleWithPeriodMenu(title: 'Inventory Metrics'),
+          const InventoryMetrics()*/
         ],
       ),
     );
@@ -48,7 +48,7 @@ class InventorySummary extends ConsumerWidget {
           var currentInventory = currencyController.formatAsPhilippineCurrency(
               amount: data.currentInventory!);
           var stockLevel = data.stockLevel.toString();
-          var backOrder = data.backOrder.toString();
+          /*var backOrder = data.backOrder.toString();*/
           var safetyStockLevel = data.safetyStockLevel.toString();
           var leadTime = data.averageLeadTime!.truncate().toString();
           var reorderPoint = data.reorderPoint.toString();
@@ -56,7 +56,7 @@ class InventorySummary extends ConsumerWidget {
           List<DashboardData> inventorySummaryList = [
             DashboardData('Value (in Php)', currentInventory),
             DashboardData('Stock Level', stockLevel),
-            DashboardData('Back Order', backOrder),
+            /*DashboardData('Back Order', backOrder),*/
             DashboardData('Safety Stock Level', safetyStockLevel),
             DashboardData('Average Lead Time (in Days)', leadTime),
             DashboardData('Reorder Point', reorderPoint),
@@ -84,7 +84,7 @@ class InventorySummary extends ConsumerWidget {
   }
 }
 
-class InventoryMetrics extends StatelessWidget {
+/*class InventoryMetrics extends StatelessWidget {
   const InventoryMetrics({super.key});
 
   @override
@@ -113,4 +113,4 @@ class InventoryMetrics extends StatelessWidget {
       itemCount: inventoryMetricsList.length,
     );
   }
-}
+}*/
