@@ -1,4 +1,5 @@
 // ignore_for_file: library_private_types_in_public_api
+import 'package:collection/collection.dart';
 
 import 'color_scheme.dart';
 import 'controllers.dart';
@@ -400,7 +401,7 @@ class CurrentInventoryItemCard extends StatelessWidget {
               ),
               StockLevelNotification(
                   stockLevel: currentInventoryData.inventory.stockLevel!,
-                  stockLevelState: currentInventoryData.stockLevelState!,
+                  stockLevelState: currentInventoryData.stockLevelState,
                   unit: item.unitOfMeasurement!)
             ],
           ),
@@ -457,6 +458,9 @@ class StockLevelNotification extends StatelessWidget {
     var pluralizedUnit =
         pluralizationController.pluralize(noun: unit, count: stockLevel);
 
+    var stockLevelString =
+        stringController.removeTrailingZeros(value: stockLevel);
+
     switch (stockLevelState) {
       case StockLevelState.inStock:
         color = lightColorScheme.tertiaryContainer;
@@ -487,7 +491,7 @@ class StockLevelNotification extends StatelessWidget {
               style: customTextStyle.labelMedium.copyWith(color: textColor),
             ),
             Text(
-              '${stockLevel.toString()} $pluralizedUnit',
+              '$stockLevelString $pluralizedUnit',
               style: customTextStyle.labelMedium.copyWith(color: textColor),
             )
           ],
@@ -524,6 +528,11 @@ class IncomingInventoryNotification extends StatelessWidget {
         color = lightColorScheme.tertiaryContainer;
         textColor = lightColorScheme.onTertiaryContainer;
         status = 'For Delivery';
+        break;
+      case IncomingInventoryState.forInventory:
+        color = lightColorScheme.primaryContainer;
+        textColor = lightColorScheme.onPrimaryContainer;
+        status = 'For Inventory';
         break;
     }
 
@@ -703,6 +712,34 @@ class InformationWithLabel extends StatelessWidget {
   }
 }
 
+class InformationWithLabelForRetailItemCard extends StatelessWidget {
+  const InformationWithLabelForRetailItemCard(
+      {super.key, required this.label, required this.data});
+
+  final String label;
+  final String data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: customTextStyle.labelMedium
+              .copyWith(color: onPrimaryFixedVariant),
+        ),
+        Text(
+          data.isEmpty ? '--' : data,
+          style: customTextStyle.bodyMedium
+              .copyWith(color: lightColorScheme.onPrimaryContainer),
+        ),
+      ],
+    );
+  }
+}
+
 class InformationWithLabelLarge extends StatelessWidget {
   const InformationWithLabelLarge(
       {super.key, required this.label, required this.data});
@@ -833,6 +870,67 @@ class ItemDashboardCard extends StatelessWidget {
   }
 }
 
+class PurchaseOrderItemManagementCard extends StatelessWidget {
+  const PurchaseOrderItemManagementCard(
+      {super.key,
+      required this.purchaseOrderItem,
+      required this.purchaseOrder});
+
+  final PurchaseOrderItem purchaseOrderItem;
+  final PurchaseOrder purchaseOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    var stockLevel =
+        '${purchaseOrderItem.quantity.toString()} ${pluralizationController.pluralize(noun: purchaseOrderItem.unitOfMeasurement!, count: purchaseOrderItem.quantity)}';
+    var costPrice = currencyController.formatAsPhilippineCurrency(
+        amount: purchaseOrderItem.estimatedPrice);
+    var supplier = Supplier.fromMap(purchaseOrder.supplier);
+    var supplierName = supplier.supplierName;
+    var addedToInventory = purchaseOrderItem.addedToInventory!;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: [
+            Expanded(
+                child: Wrap(
+              spacing: 16.0,
+              runSpacing: 4.0,
+              children: [
+                InformationWithLabel(
+                    label: 'SKU', data: purchaseOrderItem.sku!),
+                InformationWithLabel(label: 'Stock Level', data: stockLevel),
+                InformationWithLabel(label: 'Cost Price', data: costPrice),
+                InformationWithLabel(
+                    label: 'Item Name', data: purchaseOrderItem.itemName!),
+                InformationWithLabel(label: 'Supplier', data: supplierName)
+              ],
+            )),
+            IconButton(
+                onPressed: addedToInventory
+                    ? null
+                    : () => navigationController
+                        .navigateToNewInventoryStockFromPurchaseOrder(
+                            purchaseOrderItem: purchaseOrderItem,
+                            purchaseOrder: purchaseOrder),
+                icon: addedToInventory
+                    ? Icon(
+                        Icons.check_box_outlined,
+                        color: lightColorScheme.tertiary,
+                      )
+                    : Icon(
+                        Icons.add_box_outlined,
+                        color: lightColorScheme.primary,
+                      ))
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class ItemInventoryCard extends StatelessWidget {
   final Stock stock;
 
@@ -939,6 +1037,113 @@ class ItemInventoryCard extends StatelessWidget {
   }
 }
 
+class RetailItemInventoryCard extends StatelessWidget {
+  final Stock stock;
+
+  const RetailItemInventoryCard({super.key, required this.stock});
+
+  @override
+  Widget build(BuildContext context) {
+    Item item = Item.fromMap(stock.item!);
+    Supplier supplier = Supplier.fromMap(stock.supplier!);
+    StockLocation stockLocation = StockLocation.fromMap(stock.stockLocation!);
+    bool expires = perishabilityController.getPerishabilityState(
+                perishabilityString: item.perishability!) ==
+            Perishability.durableGoods
+        ? false
+        : true;
+    bool hasPurchaseDate =
+        stock.purchaseDate! == defaultDateTime ? false : true;
+    var stockLevel =
+        '${stock.stockLevel.toString()} ${pluralizationController.pluralize(noun: item.unitOfMeasurement!, count: stock.stockLevel!)}';
+    var stockLocationAddress = stockLocation.locationAddress;
+    var expirationDate = expires
+        ? dateTimeController.formatDateTimeToYMd(
+            dateTime: stock.expirationDate!)
+        : 'N/A';
+    var batchNumber = stock.batchNumber!;
+    var costPrice =
+        currencyController.formatAsPhilippineCurrency(amount: stock.costPrice!);
+    var salePrice =
+        currencyController.formatAsPhilippineCurrency(amount: stock.salePrice!);
+    var purchaseDate = hasPurchaseDate
+        ? dateTimeController.formatDateTimeToYMd(dateTime: stock.purchaseDate!)
+        : '--/--/----';
+    var supplierName = supplier.supplierName;
+
+    var expirationState = dateTimeController.getExpirationState(
+        stock.expirationDate!, stock.expirationWarning!);
+
+    var daysToExpiration = dateTimeController.getDaysToExpiration(
+        expirationDate: stock.expirationDate!);
+
+    return Card(
+      borderOnForeground: true,
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 92.0),
+        color: lightColorScheme.primaryContainer,
+        child: Row(
+          children: [
+            expires
+                ? ExpirationNotification(expirationState: expirationState)
+                : const SizedBox(
+                    height: 0.0,
+                    width: 0.0,
+                  ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Wrap(
+                        spacing: 16.0,
+                        runSpacing: 4.0,
+                        children: [
+                          InformationWithLabelForRetailItemCard(
+                              label: 'Stock Level', data: stockLevel),
+                          InformationWithLabelForRetailItemCard(
+                              label: 'Stock Location',
+                              data: stockLocationAddress),
+                          InformationWithLabelForRetailItemCard(
+                              label: 'Cost Price', data: costPrice),
+                          InformationWithLabelForRetailItemCard(
+                              label: 'Sale Price', data: salePrice),
+                          InformationWithLabelForRetailItemCard(
+                              label: 'Batch/Lot Number', data: batchNumber),
+                          InformationWithLabelForRetailItemCard(
+                              label: 'Supplier', data: supplierName),
+                          InformationWithLabelForRetailItemCard(
+                              label: 'Purchase Date', data: purchaseDate),
+                          InformationWithLabelForRetailItemCard(
+                              label: 'Expiration Date', data: expirationDate),
+                          expires
+                              ? ExpirationMessageForRetailItemCard(
+                                  expirationState: expirationState,
+                                  daysToExpiration: daysToExpiration)
+                              : const SizedBox(
+                                  height: 0.0,
+                                  width: 0.0,
+                                ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            RetailStockMoreMenuButton(
+              stock: stock,
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class ExpirationMessage extends StatelessWidget {
   final ExpirationState expirationState;
   final int daysToExpiration;
@@ -967,6 +1172,37 @@ class ExpirationMessage extends StatelessWidget {
     }
 
     return InformationWithLabel(label: 'Status', data: data);
+  }
+}
+
+class ExpirationMessageForRetailItemCard extends StatelessWidget {
+  final ExpirationState expirationState;
+  final int daysToExpiration;
+
+  const ExpirationMessageForRetailItemCard(
+      {super.key,
+      required this.expirationState,
+      required this.daysToExpiration});
+
+  @override
+  Widget build(BuildContext context) {
+    String data;
+    var unit =
+        pluralizationController.pluralize(noun: 'Day', count: daysToExpiration);
+
+    switch (expirationState) {
+      case ExpirationState.good:
+        data = '--';
+        break;
+      case ExpirationState.nearExpiration:
+        data = 'Expires in $daysToExpiration $unit';
+        break;
+      case ExpirationState.expired:
+        data = 'EXPIRED';
+        break;
+    }
+
+    return InformationWithLabelForRetailItemCard(label: 'Status', data: data);
   }
 }
 
@@ -1222,62 +1458,123 @@ class IncomingInventoryCard extends StatelessWidget {
     var expectedDeliveryDate = dateTimeController.formatDateTimeToYMd(
         dateTime: purchaseOrder.expectedDeliveryDate!);
     var purchaseOrderItemList = purchaseOrder.getPurchaseOrderItemList();
+    var deliveryDate = dateTimeController.formatDateTimeToYMd(
+        dateTime: purchaseOrder.orderDeliveredOn!);
 
-    return Card(
-      margin: const EdgeInsets.all(0.0),
-      borderOnForeground: true,
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
+    return purchaseOrder.orderDelivered!
+        ? Card(
+            margin: const EdgeInsets.all(0.0),
+            borderOnForeground: true,
+            clipBehavior: Clip.antiAlias,
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Wrap(
-                        spacing: 16.0,
-                        runSpacing: 4.0,
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Row(
                         children: [
-                          InformationWithLabel(
-                              label: 'Supplier', data: supplier.supplierName),
-                          InformationWithLabel(
-                              label: 'Estimated Total Cost',
-                              data: estimatedTotalCost),
-                          InformationWithLabel(
-                              label: 'Purchase Order Number',
-                              data: purchaseOrderNumber),
-                          InformationWithLabel(
-                              label: 'Delivery Address', data: deliveryAddress),
-                          InformationWithLabel(
-                              label: 'Expected Delivery Date',
-                              data: expectedDeliveryDate)
+                          Expanded(
+                            child: Wrap(
+                              spacing: 16.0,
+                              runSpacing: 4.0,
+                              children: [
+                                InformationWithLabel(
+                                    label: 'Supplier',
+                                    data: supplier.supplierName),
+                                InformationWithLabel(
+                                    label: 'Total Cost',
+                                    data: estimatedTotalCost),
+                                InformationWithLabel(
+                                    label: 'Purchase Order Number',
+                                    data: purchaseOrderNumber),
+                                InformationWithLabel(
+                                    label: 'Delivery Address',
+                                    data: deliveryAddress),
+                                InformationWithLabel(
+                                    label: 'Delivery Date', data: deliveryDate)
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                              onPressed: () => navigationController
+                                  .navigateToIncomingInventoryManagement(
+                                      purchaseOrder: purchaseOrder),
+                              child: const Icon(Icons.info_outline_rounded))
                         ],
                       ),
-                    ),
-                    TextButton(
-                        onPressed: () =>
-                            navigationController.navigateToPurchaseOrderDetails(
-                                purchaseOrder: purchaseOrder),
-                        child: const Icon(Icons.info_outline_rounded))
-                  ],
+                      const Divider(),
+                      const FinalPurchaseOrderItemListHeader(),
+                      PurchaseOrderItemList(
+                          purchaseOrderItemList: purchaseOrderItemList),
+                    ],
+                  ),
                 ),
-                const Divider(),
-                const PurchaseOrderItemListHeader(),
-                PurchaseOrderItemList(
-                    purchaseOrderItemList: purchaseOrderItemList),
+                IncomingInventoryNotification(
+                    incomingInventoryState: incomingInventoryState)
               ],
             ),
-          ),
-          IncomingInventoryNotification(
-              incomingInventoryState: incomingInventoryState)
-        ],
-      ),
-    );
+          )
+        : Card(
+            margin: const EdgeInsets.all(0.0),
+            borderOnForeground: true,
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Wrap(
+                              spacing: 16.0,
+                              runSpacing: 4.0,
+                              children: [
+                                InformationWithLabel(
+                                    label: 'Supplier',
+                                    data: supplier.supplierName),
+                                InformationWithLabel(
+                                    label: 'Estimated Total Cost',
+                                    data: estimatedTotalCost),
+                                InformationWithLabel(
+                                    label: 'Purchase Order Number',
+                                    data: purchaseOrderNumber),
+                                InformationWithLabel(
+                                    label: 'Delivery Address',
+                                    data: deliveryAddress),
+                                InformationWithLabel(
+                                    label: 'Expected Delivery Date',
+                                    data: expectedDeliveryDate)
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                              onPressed: () => navigationController
+                                  .navigateToPurchaseOrderDetails(
+                                      purchaseOrder: purchaseOrder),
+                              child: const Icon(Icons.info_outline_rounded))
+                        ],
+                      ),
+                      const Divider(),
+                      const PurchaseOrderItemListHeader(),
+                      PurchaseOrderItemList(
+                          purchaseOrderItemList: purchaseOrderItemList),
+                    ],
+                  ),
+                ),
+                IncomingInventoryNotification(
+                    incomingInventoryState: incomingInventoryState)
+              ],
+            ),
+          );
   }
 }
 
@@ -1319,6 +1616,63 @@ class PurchaseOrderItemListHeader extends StatelessWidget {
             flex: 3,
             child: Text(
               'Est. Price/Unit',
+              textAlign: TextAlign.center,
+              style: customTextStyle.labelLarge
+                  .copyWith(color: lightColorScheme.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            )),
+        Expanded(
+            flex: 3,
+            child: Text(
+              'Subtotal',
+              textAlign: TextAlign.center,
+              style: customTextStyle.labelLarge
+                  .copyWith(color: lightColorScheme.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            )),
+      ],
+    );
+  }
+}
+
+class FinalPurchaseOrderItemListHeader extends StatelessWidget {
+  const FinalPurchaseOrderItemListHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+            flex: 5,
+            child: Text(
+              'Item',
+              textAlign: TextAlign.center,
+              style: customTextStyle.labelLarge
+                  .copyWith(color: lightColorScheme.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            )),
+        Expanded(
+            flex: 3,
+            child: Text(
+              'SKU',
+              textAlign: TextAlign.center,
+              style: customTextStyle.labelLarge
+                  .copyWith(color: lightColorScheme.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            )),
+        Expanded(
+            flex: 2,
+            child: Text(
+              'Quantity',
+              textAlign: TextAlign.center,
+              style: customTextStyle.labelLarge
+                  .copyWith(color: lightColorScheme.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            )),
+        Expanded(
+            flex: 3,
+            child: Text(
+              'Price/Unit',
               textAlign: TextAlign.center,
               style: customTextStyle.labelLarge
                   .copyWith(color: lightColorScheme.onSurfaceVariant),
@@ -1798,6 +2152,7 @@ class _PlaceOrderChipState extends ConsumerState<PlaceOrderChip> {
 
   @override
   Widget build(BuildContext context) {
+    var user = ref.watch(userProvider);
     var streamPurchaseOrder =
         ref.watch(streamPurchaseOrderProvider(purchaseOrder.purchaseOrderID!));
     Widget? actionChip;
@@ -1822,7 +2177,13 @@ class _PlaceOrderChipState extends ConsumerState<PlaceOrderChip> {
             'Place Order',
             style: TextStyle(color: lightColorScheme.primary),
           ),
-          onPressed: () {},
+          onPressed: user == null
+              ? null
+              : () => dialogController.placeOrderDialog(
+                  context: context,
+                  uid: user.uid,
+                  purchaseOrder: purchaseOrder,
+                  orderPlaced: true),
         );
         break;
       case PlaceOrderState.loading:
@@ -1850,7 +2211,13 @@ class _PlaceOrderChipState extends ConsumerState<PlaceOrderChip> {
             style: TextStyle(color: lightColorScheme.onTertiaryContainer),
           ),
           backgroundColor: lightColorScheme.tertiaryContainer,
-          onPressed: () {},
+          onPressed: user == null
+              ? null
+              : () => dialogController.cancelOrderPlacementDialog(
+                  context: context,
+                  uid: user.uid,
+                  purchaseOrder: purchaseOrder,
+                  orderPlaced: false),
         );
         break;
       case PlaceOrderState.disabled:
@@ -1892,6 +2259,7 @@ class _ConfirmOrderChipState extends ConsumerState<ConfirmOrderChip> {
 
   @override
   Widget build(BuildContext context) {
+    var user = ref.watch(userProvider);
     var streamPurchaseOrder =
         ref.watch(streamPurchaseOrderProvider(purchaseOrder.purchaseOrderID!));
     Widget? actionChip;
@@ -1920,7 +2288,13 @@ class _ConfirmOrderChipState extends ConsumerState<ConfirmOrderChip> {
             'Confirm Order',
             style: TextStyle(color: lightColorScheme.primary),
           ),
-          onPressed: () {},
+          onPressed: user == null
+              ? null
+              : () => dialogController.orderConfirmationDialog(
+                  context: context,
+                  uid: user.uid,
+                  purchaseOrder: purchaseOrder,
+                  orderConfirmed: true),
         );
         break;
       case ConfirmOrderState.loading:
@@ -1945,7 +2319,13 @@ class _ConfirmOrderChipState extends ConsumerState<ConfirmOrderChip> {
             style: TextStyle(color: lightColorScheme.onTertiaryContainer),
           ),
           backgroundColor: lightColorScheme.tertiaryContainer,
-          onPressed: () {},
+          onPressed: user == null
+              ? null
+              : () => dialogController.cancelOrderConfirmationDialog(
+                  context: context,
+                  uid: user.uid,
+                  purchaseOrder: purchaseOrder,
+                  orderConfirmed: false),
         );
         break;
       case ConfirmOrderState.disabled:
@@ -2133,10 +2513,6 @@ class _OutgoingInventoryFilterChips
     setState(() {
       selectedFilter = filter;
     });
-
-    // You can implement filtering logic here based on the selected filter.
-    // For now, let's print the selected filter.
-    print("Selected Filter: $selectedFilter");
   }
 
   @override
@@ -2156,21 +2532,80 @@ class _OutgoingInventoryFilterChips
   }
 }
 
-class OutgoingInventoryCard extends StatelessWidget {
-  const OutgoingInventoryCard(
-      {super.key,
-      required this.customerName,
-      required this.totalCost,
-      required this.salesOrderNumber,
-      required this.salesOrderItemList});
+class ItemSalesSummaryCard extends ConsumerWidget {
+  const ItemSalesSummaryCard(this.dailySalesReport, {super.key});
 
-  final String customerName;
-  final String totalCost;
-  final String salesOrderNumber;
-  final List<SalesOrderItemListTileData> salesOrderItemList;
+  final DailySalesReport dailySalesReport;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var asyncItemSalesSummary =
+        ref.watch(asyncItemSalesSummaryProvider(dailySalesReport));
+
+    return asyncItemSalesSummary.when(
+        data: (data) {
+          var itemSalesSummaryList = data;
+          var amount = itemSalesSummaryList.fold(
+              0.0,
+              (previousValue, itemSalesSummary) =>
+                  previousValue + itemSalesSummary.subtotal!);
+          var totalCost =
+              currencyController.formatAsPhilippineCurrency(amount: amount);
+          return itemSalesSummaryList.isEmpty
+              ? const ErrorMessage(
+                  errorMessage: 'You have no sales data for this day...')
+              : Card(
+                  margin: const EdgeInsets.all(0.0),
+                  borderOnForeground: true,
+                  clipBehavior: Clip.antiAlias,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SalesOrderItemListHeader(),
+                        ItemSalesSummaryList(
+                            itemSalesSummaryList: itemSalesSummaryList),
+                        const Divider(),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: Text(
+                            'Total: $totalCost',
+                            style: customTextStyle.titleMedium
+                                .copyWith(color: lightColorScheme.onSurface),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                );
+        },
+        error: (e, st) {
+          print(e);
+          print(st);
+          return const ErrorMessage(errorMessage: 'Something went wrong...');
+        },
+        loading: () => const LoadingWidget());
+  }
+}
+
+class OutgoingInventoryCard extends StatelessWidget {
+  final SalesOrder salesOrder;
+
+  const OutgoingInventoryCard({super.key, required this.salesOrder});
 
   @override
   Widget build(BuildContext context) {
+    var customer = Customer.fromMap(salesOrder.customer!);
+    var amount = double.tryParse(salesOrder.orderTotal!);
+    var totalCost =
+        currencyController.formatAsPhilippineCurrency(amount: amount!);
+    var salesOrderItemList = salesOrder.getSalesOrderItemList();
+    var transactionMadeOn = dateTimeController.formatDateTimeToYMdjm(
+        dateTime: salesOrder.transactionMadeOn!);
+
     return Card(
       margin: const EdgeInsets.all(0.0),
       borderOnForeground: true,
@@ -2190,17 +2625,26 @@ class OutgoingInventoryCard extends StatelessWidget {
                     runSpacing: 4.0,
                     children: [
                       InformationWithLabel(
-                          label: 'Customer', data: customerName),
+                          label: 'Customer',
+                          data: customer.customerName.isEmpty
+                              ? 'Retail Sale'
+                              : customer.customerName),
                       InformationWithLabel(
                           label: 'Total Cost', data: totalCost),
                       InformationWithLabel(
-                          label: 'Sales Order Number', data: salesOrderNumber),
+                          label: 'Sales Order Number',
+                          data: salesOrder.salesOrderNumber!),
+                      InformationWithLabel(
+                          label: 'Transaction Made On',
+                          data: transactionMadeOn),
+                      InformationWithLabel(
+                          label: 'PaymentTerms', data: salesOrder.paymentTerms!)
                     ],
                   ),
                 ),
-                TextButton(
+                /*TextButton(
                     onPressed: () {},
-                    child: const Icon(Icons.info_outline_rounded))
+                    child: const Icon(Icons.info_outline_rounded))*/
               ],
             ),
             const Divider(),
@@ -2213,10 +2657,10 @@ class OutgoingInventoryCard extends StatelessWidget {
   }
 }
 
-class SalesOrderItemList extends StatelessWidget {
-  const SalesOrderItemList({super.key, required this.salesOrderItemList});
+class ItemSalesSummaryList extends StatelessWidget {
+  const ItemSalesSummaryList({super.key, required this.itemSalesSummaryList});
 
-  final List<SalesOrderItemListTileData> salesOrderItemList;
+  final List<ItemSalesSummary> itemSalesSummaryList;
 
   @override
   Widget build(BuildContext context) {
@@ -2224,13 +2668,53 @@ class SalesOrderItemList extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
       itemBuilder: (context, index) {
-        SalesOrderItemListTileData data = salesOrderItemList[index];
+        ItemSalesSummary data = itemSalesSummaryList[index];
+        Item item = Item.fromMap(data.item!);
+        var quantityDouble = data.quantity;
+        var quantity =
+            stringController.removeTrailingZeros(value: quantityDouble!);
+        var price = currencyController.getAveragePrice(
+            quantity: data.quantity!, total: data.subtotal!);
+        var subtotal = currencyController.formatAsPhilippineCurrency(
+            amount: data.subtotal!);
         return PurchaseOrderItemListTile(
-            itemName: data.itemName,
-            sku: data.sku,
-            quantity: data.quantity,
-            estimatedPrice: data.price,
-            subtotal: data.subtotal);
+            itemName: item.itemName!,
+            sku: item.sku!,
+            quantity: quantity,
+            estimatedPrice: price,
+            subtotal: subtotal);
+      },
+      itemCount: itemSalesSummaryList.length,
+    );
+  }
+}
+
+class SalesOrderItemList extends StatelessWidget {
+  const SalesOrderItemList({super.key, required this.salesOrderItemList});
+
+  final List<SalesOrderItem> salesOrderItemList;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      itemBuilder: (context, index) {
+        SalesOrderItem data = salesOrderItemList[index];
+        Item item = Item.fromMap(data.item!);
+        var quantityDouble = data.quantity;
+        var quantity =
+            stringController.removeTrailingZeros(value: quantityDouble!);
+        var price = currencyController.getAveragePrice(
+            quantity: data.quantity!, total: data.subtotal!);
+        var subtotal = currencyController.formatAsPhilippineCurrency(
+            amount: data.subtotal!);
+        return PurchaseOrderItemListTile(
+            itemName: item.itemName!,
+            sku: item.sku!,
+            quantity: quantity,
+            estimatedPrice: price,
+            subtotal: subtotal);
       },
       itemCount: salesOrderItemList.length,
     );
@@ -2293,10 +2777,6 @@ class _SalesOrderStatusFilterChips extends State<SalesOrderStatusFilterChips> {
     setState(() {
       selectedFilter = filter;
     });
-
-    // You can implement filtering logic here based on the selected filter.
-    // For now, let's print the selected filter.
-    print("Selected Filter: $selectedFilter");
   }
 
   @override
@@ -2328,54 +2808,69 @@ class _SalesOrderStatusFilterChips extends State<SalesOrderStatusFilterChips> {
   }
 }
 
-class NewSalesOrderFilterChips extends StatefulWidget {
-  const NewSalesOrderFilterChips({super.key, required this.filters});
-
-  final List<String> filters;
+class NewSalesOrderFilterChips extends ConsumerStatefulWidget {
+  const NewSalesOrderFilterChips({super.key});
 
   @override
   _NewSalesOrderFilterChipsState createState() =>
       _NewSalesOrderFilterChipsState();
 }
 
-class _NewSalesOrderFilterChipsState extends State<NewSalesOrderFilterChips> {
-  late List<String> filters;
-  String selectedFilter = "All"; // Default selected filter
+class _NewSalesOrderFilterChipsState
+    extends ConsumerState<NewSalesOrderFilterChips> {
+  final GlobalKey _selectedChipKey = GlobalKey();
+  final GlobalKey _categoryWrapKey = GlobalKey();
 
-  void _onFilterSelected(String filter) {
-    setState(() {
-      selectedFilter = filter;
-    });
-
-    // You can implement filtering logic here based on the selected filter.
-    // For now, let's print the selected filter.
-    print("Selected Filter: $selectedFilter");
-  }
+  String? _selectedID = 'All';
 
   @override
   void initState() {
     super.initState();
-    filters = widget.filters;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8.0, // Adjust the spacing between filter chips
-      children: filters.map((filter) {
-        return FilterChip(
-          label: Text(filter),
-          selected: selectedFilter == filter,
-          onSelected: (isSelected) {
-            _onFilterSelected(filter);
-          },
-        );
-      }).toList(),
-    );
+    var categoryFilterList = ref.watch(asyncCategoryFilterListProvider);
+
+    return categoryFilterList.when(
+        data: (data) {
+          return Wrap(
+            key: _categoryWrapKey,
+            spacing: 8.0,
+            runSpacing: 4.0,
+            children: data
+                .map(
+                  (filter) => FilterChip(
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    key: filter.categoryID == _selectedID
+                        ? _selectedChipKey
+                        : null,
+                    label: Text(
+                      filter.categoryName!,
+                    ),
+                    selected: filter.categoryID == _selectedID,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedID = selected ? filter.categoryID : null;
+                      });
+                      ref
+                          .read(categoryIDProvider.notifier)
+                          .setCategoryID(filter.categoryID);
+                    },
+                  ),
+                )
+                .toList(),
+          );
+        },
+        error: (e, st) => const SizedBox(
+              height: 0.0,
+              width: 0.0,
+            ),
+        loading: () => const LoadingWidget());
   }
 }
 
-class NewSalesOrderItemCard extends StatelessWidget {
+/*class NewSalesOrderItemCard extends StatelessWidget {
   const NewSalesOrderItemCard(
       {super.key, required this.imageURL, required this.itemName});
 
@@ -2397,6 +2892,138 @@ class NewSalesOrderItemCard extends StatelessWidget {
             ImageWithDynamicSizing(imageURL: imageURL),
             NewSalesOrderItemCardTitle(itemName: itemName),
           ],
+        ),
+      ),
+    );
+  }
+}*/
+
+class NewSalesOrderItemCard extends ConsumerStatefulWidget {
+  const NewSalesOrderItemCard({super.key, required this.retailItem});
+
+  final RetailItem retailItem;
+
+  @override
+  _NewSalesOrderItemCardState createState() => _NewSalesOrderItemCardState();
+}
+
+class _NewSalesOrderItemCardState extends ConsumerState<NewSalesOrderItemCard> {
+  late final RetailItem retailItem;
+  late final Item item;
+  late final double stockLimit;
+  double count = 0.0;
+
+/*  double stockLevel = 0.0;
+  List<Stock> stockList = [];*/
+
+  @override
+  void initState() {
+    super.initState();
+    retailItem = widget.retailItem;
+    item = Item.fromMap(retailItem.item!);
+    stockLimit = retailItem.retailStockLevel!;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    /*var asyncRetailStockList =
+        ref.watch(streamRetailStockListProvider(item.itemID!));
+    asyncRetailStockList.whenData((value) => stockList = value);
+    var stockLevel = stockList.fold(
+        0.0, (previousValue, stock) => previousValue + stock.stockLevel!);*/
+    var salesOrderCart = ref.watch(salesOrderCartNotifierProvider);
+    var orderItem = salesOrderCart.firstWhereOrNull(
+        (salesOrderItem) => salesOrderItem.item?['itemID'] == item.itemID);
+    var currentStock = stringController.removeTrailingZeros(
+        value: retailItem.retailStockLevel!);
+    /*var currentStock = stringController.removeTrailingZeros(value: stockLevel);*/
+    var unit = pluralizationController.pluralize(
+        noun: item.unitOfMeasurement!, count: count);
+
+    if (orderItem != null) {
+      setState(() {
+        count = orderItem.quantity!;
+      });
+    } else {
+      setState(() {
+        count = 0.0;
+      });
+    }
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => salesOrderController.addSalesOrderItem(
+            ref: ref,
+            retailItem: retailItem,
+            stockLimit: stockLimit,
+            count: count),
+        onLongPress: () => ref
+            .read(salesOrderCartNotifierProvider.notifier)
+            .removeItem(item.itemID!),
+        onDoubleTap: () => dialogController.addCustomItemOrderDialog(
+            context: context, ref: ref, retailItem: retailItem),
+        child: Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ItemCardImage(
+                imageURL: item.imageURL!,
+              ),
+              const Padding(padding: EdgeInsets.only(left: 8.0)),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.itemName!,
+                            style: customTextStyle.titleMedium
+                                .copyWith(color: lightColorScheme.onSurface),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.sku!,
+                            style: customTextStyle.bodyMedium
+                                .copyWith(color: lightColorScheme.onSurface),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Current Stock: $currentStock $unit',
+                            style: customTextStyle.labelMedium
+                                .copyWith(color: lightColorScheme.onSurface),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2486,31 +3113,28 @@ class OrderSummaryListTile extends StatelessWidget {
               subTotal,
               style: customTextStyle.bodyMedium,
             )),
-        TextButton(onPressed: () {}, child: const Icon(Icons.delete_outline))
       ],
     );
   }
 }
 
-class SaleTypeDropDownMenu extends StatefulWidget {
+class SaleTypeDropDownMenu extends ConsumerStatefulWidget {
   const SaleTypeDropDownMenu({super.key});
 
   @override
   _SaleTypeDropDownMenuState createState() => _SaleTypeDropDownMenuState();
 }
 
-class _SaleTypeDropDownMenuState extends State<SaleTypeDropDownMenu> {
+class _SaleTypeDropDownMenuState extends ConsumerState<SaleTypeDropDownMenu> {
   SaleType? selectedSaleType;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 
@@ -2525,7 +3149,7 @@ class _SaleTypeDropDownMenuState extends State<SaleTypeDropDownMenu> {
     }
 
     return DropdownMenu<SaleType>(
-      initialSelection: SaleType.retail,
+      initialSelection: ref.watch(saleTypeProvider),
       enableFilter: false,
       enableSearch: false,
       label: const Text('Sale Type'),
@@ -2534,28 +3158,25 @@ class _SaleTypeDropDownMenuState extends State<SaleTypeDropDownMenu> {
         setState(() {
           selectedSaleType = saleType;
         });
+        ref.read(saleTypeProvider.notifier).state = saleType!;
       },
     );
   }
 }
 
-class CustomerDropDownMenu extends StatefulWidget {
-  const CustomerDropDownMenu({super.key, required this.customerList});
-
-  final List<Customer> customerList;
+class CustomerDropDownMenu extends ConsumerStatefulWidget {
+  const CustomerDropDownMenu({super.key});
 
   @override
   _CustomerDropDownMenuState createState() => _CustomerDropDownMenuState();
 }
 
-class _CustomerDropDownMenuState extends State<CustomerDropDownMenu> {
+class _CustomerDropDownMenuState extends ConsumerState<CustomerDropDownMenu> {
   Customer? selectedCustomer;
-  late List<Customer> customerList;
 
   @override
   void initState() {
     super.initState();
-    customerList = widget.customerList;
   }
 
   @override
@@ -2565,30 +3186,49 @@ class _CustomerDropDownMenuState extends State<CustomerDropDownMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final List<DropdownMenuEntry<Customer>> customerEntries =
-        <DropdownMenuEntry<Customer>>[];
-    for (final Customer customer in customerList) {
-      customerEntries.add(
-        DropdownMenuEntry<Customer>(
-            value: customer, label: customer.customerName),
-      );
-    }
+    var asyncCustomerList = ref.watch(streamCustomerListProvider);
 
-    return DropdownMenu<Customer>(
-      enableFilter: false,
-      enableSearch: false,
-      label: const Text('Customer'),
-      dropdownMenuEntries: customerEntries,
-      onSelected: (Customer? customer) {
-        setState(() {
-          selectedCustomer = customer;
-        });
+    return asyncCustomerList.when(
+      data: (data) {
+        var customerList = data;
+
+        final List<DropdownMenuEntry<Customer>> customerEntries =
+            <DropdownMenuEntry<Customer>>[];
+        for (final Customer customer in customerList) {
+          customerEntries.add(
+            DropdownMenuEntry<Customer>(
+                value: customer, label: customer.customerName),
+          );
+        }
+
+        return DropdownMenu<Customer>(
+          enableFilter: false,
+          enableSearch: false,
+          label: const Text('Customer'),
+          dropdownMenuEntries: customerEntries,
+          onSelected: (Customer? customer) {
+            setState(() {
+              selectedCustomer = customer;
+            });
+            ref.read(customerSelectionProvider.notifier).setCustomer(customer!);
+          },
+        );
       },
+      error: (e, st) => const DropdownMenu(
+        dropdownMenuEntries: [],
+        enabled: false,
+        label: Text('Customer'),
+      ),
+      loading: () => const DropdownMenu(
+        dropdownMenuEntries: [],
+        enabled: false,
+        label: Text('Customer'),
+      ),
     );
   }
 }
 
-class PaymentTermsDropDownMenu extends StatefulWidget {
+class PaymentTermsDropDownMenu extends ConsumerStatefulWidget {
   const PaymentTermsDropDownMenu({super.key});
 
   @override
@@ -2596,7 +3236,8 @@ class PaymentTermsDropDownMenu extends StatefulWidget {
       _PaymentTermsDropDownMenuState();
 }
 
-class _PaymentTermsDropDownMenuState extends State<PaymentTermsDropDownMenu> {
+class _PaymentTermsDropDownMenuState
+    extends ConsumerState<PaymentTermsDropDownMenu> {
   PaymentTerm? selectedPaymentTerm;
 
   @override
@@ -2621,37 +3262,37 @@ class _PaymentTermsDropDownMenuState extends State<PaymentTermsDropDownMenu> {
     }
 
     return DropdownMenu<PaymentTerm>(
+      initialSelection: ref.watch(paymentTermsProvider),
       enableFilter: false,
       enableSearch: false,
-      label: const Text('Payment Term'),
+      label: const Text('Payment Terms'),
       dropdownMenuEntries: paymentTermEntries,
       onSelected: (PaymentTerm? paymentTerm) {
         setState(() {
           selectedPaymentTerm = paymentTerm;
         });
+
+        ref.read(paymentTermsProvider.notifier).state = paymentTerm!;
       },
     );
   }
 }
 
-class SalespersonDropDownMenu extends StatefulWidget {
-  const SalespersonDropDownMenu({super.key, required this.salespersonList});
-
-  final List<Salesperson> salespersonList;
+/*class SalespersonDropDownMenu extends ConsumerStatefulWidget {
+  const SalespersonDropDownMenu({super.key});
 
   @override
   _SalespersonDropDownMenuState createState() =>
       _SalespersonDropDownMenuState();
 }
 
-class _SalespersonDropDownMenuState extends State<SalespersonDropDownMenu> {
+class _SalespersonDropDownMenuState
+    extends ConsumerState<SalespersonDropDownMenu> {
   Salesperson? selectedSalesperson;
-  late List<Salesperson> salespersonList;
 
   @override
   void initState() {
     super.initState();
-    salespersonList = widget.salespersonList;
   }
 
   @override
@@ -2661,28 +3302,46 @@ class _SalespersonDropDownMenuState extends State<SalespersonDropDownMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final List<DropdownMenuEntry<Salesperson>> salespersonEntries =
-        <DropdownMenuEntry<Salesperson>>[];
-    for (final Salesperson salesperson in salespersonList) {
-      salespersonEntries.add(
-        DropdownMenuEntry<Salesperson>(
-            value: salesperson, label: salesperson.salespersonName!),
-      );
-    }
+    var asyncSalesPersonList = ref.watch(salespersonListStreamProvider);
 
-    return DropdownMenu<Salesperson>(
-      enableFilter: false,
-      enableSearch: false,
-      label: const Text('Salesperson'),
-      dropdownMenuEntries: salespersonEntries,
-      onSelected: (Salesperson? salesperson) {
-        setState(() {
-          selectedSalesperson = salesperson;
-        });
-      },
-    );
+    return asyncSalesPersonList.when(
+        data: (data) {
+          var salespersonList = data;
+
+          final List<DropdownMenuEntry<Salesperson>> salespersonEntries =
+              <DropdownMenuEntry<Salesperson>>[];
+          for (final Salesperson salesperson in salespersonList) {
+            salespersonEntries.add(
+              DropdownMenuEntry<Salesperson>(
+                  value: salesperson, label: salesperson.salespersonName!),
+            );
+          }
+
+          return DropdownMenu<Salesperson>(
+            enableFilter: false,
+            enableSearch: false,
+            label: const Text('Salesperson'),
+            dropdownMenuEntries: salespersonEntries,
+            onSelected: (Salesperson? salesperson) {
+              setState(() {
+                selectedSalesperson = salesperson;
+              });
+              ref
+                  .read(salesPersonSelectionProvider.notifier)
+                  .setSalesperson(salesperson!);
+            },
+          );
+        },
+        error: (e, st) => const DropdownMenu(
+            dropdownMenuEntries: [],
+            enabled: false,
+            label: Text('Salesperson')),
+        loading: () => const DropdownMenu(
+            dropdownMenuEntries: [],
+            enabled: false,
+            label: Text('Salesperson')));
   }
-}
+}*/
 
 class CustomerTypeDropDownMenu extends ConsumerStatefulWidget {
   const CustomerTypeDropDownMenu({super.key});
@@ -2750,10 +3409,6 @@ class _ProductFilterChipsState extends State<ProductFilterChips> {
     setState(() {
       selectedFilter = filter;
     });
-
-    // You can implement filtering logic here based on the selected filter.
-    // For now, let's print the selected filter.
-    print("Selected Filter: $selectedFilter");
   }
 
   @override
@@ -3176,7 +3831,10 @@ class ItemMoreMenuButton extends ConsumerWidget {
                   onPressed: () =>
                       navigationController.navigateToEditItem(item: item),
                   child: const Text('Edit')),
-              MenuItemButton(onPressed: () {}, child: const Text('Delete'))
+              MenuItemButton(
+                  onPressed: () =>
+                      itemController.removeItem(uid: user.uid, item: item),
+                  child: const Text('Delete'))
             ],
             builder: (context, controller, child) {
               return IconButton(
@@ -3200,6 +3858,10 @@ class StockMoreMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Item item = Item.fromMap(stock.item!);
+    var itemID = item.itemID;
+    var uid = item.uid;
+
     return MenuAnchor(
       menuChildren: [
         MenuItemButton(
@@ -3210,6 +3872,43 @@ class StockMoreMenuButton extends StatelessWidget {
             onPressed: () =>
                 navigationController.navigateToAdjustInventory(stock: stock),
             child: const Text('Adjust')),
+        MenuItemButton(
+            onPressed: () => dialogController.setAsRetailStockDialog(
+                context: context, uid: uid!, itemID: itemID!, stock: stock),
+            child: const Text('Set As Retail Stock'))
+      ],
+      builder: (context, controller, child) {
+        return IconButton(
+            onPressed: () {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            },
+            icon: const Icon(Icons.more_horiz_outlined));
+      },
+    );
+  }
+}
+
+class RetailStockMoreMenuButton extends StatelessWidget {
+  const RetailStockMoreMenuButton({super.key, required this.stock});
+
+  final Stock stock;
+
+  @override
+  Widget build(BuildContext context) {
+    Item item = Item.fromMap(stock.item!);
+    var itemID = item.itemID;
+    var uid = item.uid;
+
+    return MenuAnchor(
+      menuChildren: [
+        MenuItemButton(
+            onPressed: () => dialogController.removeFromRetailStockDialog(
+                context: context, uid: uid!, itemID: itemID!, stock: stock),
+            child: const Text('Remove From Retail Stock'))
       ],
       builder: (context, controller, child) {
         return IconButton(
@@ -3355,7 +4054,6 @@ class _SupplierDropDownMenuState extends ConsumerState<SupplierDropDownMenu> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 
@@ -3375,8 +4073,8 @@ class _SupplierDropDownMenuState extends ConsumerState<SupplierDropDownMenu> {
             );
           }
           return DropdownMenu<Supplier>(
-            enableFilter: true,
-            enableSearch: true,
+            enableFilter: false,
+            enableSearch: false,
             label: const Text('Supplier (Required)'),
             dropdownMenuEntries: supplierEntries,
             onSelected: (Supplier? supplier) {
@@ -3516,6 +4214,233 @@ class InventoryTransactionCard extends StatelessWidget {
                 label: 'Transaction Made On', data: transactionMadeOn),
             InformationWithLabel(
                 label: 'Reason', data: inventoryTransaction.reason)
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ReceiveOrderButton extends ConsumerWidget {
+  const ReceiveOrderButton(this.purchaseOrder, {super.key});
+
+  final PurchaseOrder purchaseOrder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var user = ref.watch(userProvider);
+    var asyncStreamPurchaseOrder =
+        ref.watch(streamPurchaseOrderProvider(purchaseOrder.purchaseOrderID!));
+
+    return asyncStreamPurchaseOrder.when(data: (data) {
+      var orderConfirmed = data.orderConfirmed!;
+      return orderConfirmed && user != null
+          ? FilledButton(
+              onPressed: () => dialogController.receivePurchaseOrderDialog(
+                  context: context,
+                  uid: user.uid,
+                  purchaseOrder: purchaseOrder),
+              child: const Text('Receive Order'))
+          : const FilledButton(onPressed: null, child: Text('Receive Order'));
+    }, error: (e, st) {
+      return const FilledButton(onPressed: null, child: Text('Receive Order'));
+    }, loading: () {
+      return const FilledButton(onPressed: null, child: Text('Receive Order'));
+    });
+  }
+}
+
+class PurchaseOrderEditButton extends ConsumerWidget {
+  const PurchaseOrderEditButton(this.purchaseOrder, {super.key});
+
+  final PurchaseOrder purchaseOrder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var asyncStreamPurchaseOrder =
+        ref.watch(streamPurchaseOrderProvider(purchaseOrder.purchaseOrderID!));
+
+    return asyncStreamPurchaseOrder.when(data: (data) {
+      var orderPlaced = data.orderPlaced!;
+      return !orderPlaced
+          ? OutlinedButton(
+              onPressed: () => navigationController.navigateToEditPurchaseOrder(
+                  purchaseOrder: purchaseOrder),
+              child: const Text('Edit Order'))
+          : const OutlinedButton(onPressed: null, child: Text('Edit Order'));
+    }, error: (e, st) {
+      return const OutlinedButton(onPressed: null, child: Text('Edit Order'));
+    }, loading: () {
+      return const OutlinedButton(onPressed: null, child: Text('Edit Order'));
+    });
+  }
+}
+
+class VoidPurchaseOrderButton extends ConsumerWidget {
+  const VoidPurchaseOrderButton(this.purchaseOrder, {super.key});
+
+  final PurchaseOrder purchaseOrder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var user = ref.watch(userProvider);
+
+    return TextButton(
+        onPressed: user == null
+            ? null
+            : () => dialogController.cancelPurchaseOrderDialog(
+                context: context, uid: user.uid, purchaseOrder: purchaseOrder),
+        child: Text(
+          'Void',
+          style: TextStyle(color: lightColorScheme.error),
+        ));
+  }
+}
+
+class EditSupplierDropDownMenu extends ConsumerStatefulWidget {
+  const EditSupplierDropDownMenu(this.supplier, {super.key});
+
+  final Supplier supplier;
+
+  @override
+  _EditSupplierDropDownMenuState createState() =>
+      _EditSupplierDropDownMenuState();
+}
+
+class _EditSupplierDropDownMenuState
+    extends ConsumerState<EditSupplierDropDownMenu> {
+  Supplier? selectedSupplier;
+
+  final TextEditingController dropDownMenuController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    selectedSupplier = widget.supplier;
+    Future.delayed(Duration.zero, () async {
+      ref
+          .read(supplierSelectionProvider.notifier)
+          .setSupplier(selectedSupplier!);
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    dropDownMenuController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var asyncSupplierList = ref.watch(streamSupplierListProvider);
+
+    return asyncSupplierList.when(
+        data: (data) {
+          var supplierList = data;
+          final List<DropdownMenuEntry<Supplier>> supplierEntries =
+              <DropdownMenuEntry<Supplier>>[];
+          for (final Supplier supplier in supplierList) {
+            supplierEntries.add(
+              DropdownMenuEntry<Supplier>(
+                  value: supplier, label: supplier.supplierName),
+            );
+          }
+
+          debugPrint(supplierEntries.length.toString());
+
+          var initialSelection = supplierList.firstWhere(
+              (element) => selectedSupplier!.supplierID == element.supplierID);
+
+          return DropdownMenu<Supplier>(
+            initialSelection: initialSelection,
+            controller: dropDownMenuController,
+            enableFilter: false,
+            enableSearch: false,
+            label: const Text('Supplier (Required)'),
+            dropdownMenuEntries: supplierEntries,
+            onSelected: (Supplier? supplier) {
+              setState(() {
+                selectedSupplier = supplier;
+              });
+              ref
+                  .read(supplierSelectionProvider.notifier)
+                  .setSupplier(supplier!);
+            },
+          );
+        },
+        error: (e, st) => const SizedBox(
+              height: 0.0,
+              width: 0.0,
+            ),
+        loading: () => const SizedBox(
+              height: 0.0,
+              width: 0.0,
+            ));
+  }
+}
+
+class RetailInventoryItemCard extends StatelessWidget {
+  final RetailItem retailItem;
+
+  const RetailInventoryItemCard({super.key, required this.retailItem});
+
+  @override
+  Widget build(BuildContext context) {
+    Item item = Item.fromMap(retailItem.item!);
+    var unit = item.unitOfMeasurement!;
+    var stockLevel = retailItem.retailStockLevel;
+    var pluralizedUnit =
+        pluralizationController.pluralize(noun: unit, count: stockLevel!);
+
+    return Card(
+      borderOnForeground: true,
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 78,
+        width: 244,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4.0, 4.0, 4.0, 0.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.itemName!,
+                    style: customTextStyle.titleMedium
+                        .copyWith(color: lightColorScheme.onSurface),
+                  ),
+                  Text(
+                    item.sku!,
+                    style: customTextStyle.bodyMedium
+                        .copyWith(color: lightColorScheme.onSurface),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 24,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Stock Level:',
+                      style: customTextStyle.labelMedium,
+                    ),
+                    Text(
+                      '${stockLevel.toString()} $pluralizedUnit',
+                      style: customTextStyle.labelMedium,
+                    )
+                  ],
+                ),
+              ),
+            )
           ],
         ),
       ),

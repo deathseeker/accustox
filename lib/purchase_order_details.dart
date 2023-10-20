@@ -1,6 +1,5 @@
-import 'package:accustox/controllers.dart';
+import 'controllers.dart';
 import 'package:flutter/material.dart';
-import 'enumerated_values.dart';
 import 'widget_components.dart';
 import 'color_scheme.dart';
 import 'models.dart';
@@ -74,7 +73,8 @@ class PurchaseOrderDetails extends StatelessWidget {
               PurchaseOrderDetailsItemListCard(
                 estimatedTotalCost: estimatedTotalCost,
                 purchaseOrderItemList: purchaseOrderItemList,
-              )
+              ),
+              PurchaseOrderButtonBar(purchaseOrder: purchaseOrder)
             ],
           ),
         ),
@@ -119,6 +119,23 @@ class PurchaseOrderDetailsItemListCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class PurchaseOrderButtonBar extends StatelessWidget {
+  const PurchaseOrderButtonBar({super.key, required this.purchaseOrder});
+
+  final PurchaseOrder purchaseOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    return ButtonBar(
+      children: [
+        VoidPurchaseOrderButton(purchaseOrder),
+        PurchaseOrderEditButton(purchaseOrder),
+        ReceiveOrderButton(purchaseOrder)
+      ],
     );
   }
 }

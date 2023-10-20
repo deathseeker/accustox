@@ -31,14 +31,14 @@ class InventorySummaryDashboard extends StatelessWidget {
       DashboardData('Expired Stock (in SKUs)', '999999999'),
     ];
 
-    List<DashboardData> inventoryMetricsList = [
+/*    List<DashboardData> inventoryMetricsList = [
       DashboardData('Inventory Turnover Rate', '9.99'),
       DashboardData('Cost of Goods Sold (in Php)', '999999999'),
       DashboardData('Days of Inventory on Hand (DOH)', '999999999'),
       DashboardData('Stock to Sales Ratio', '999999999'),
       DashboardData('Sell Through Rate', '999999999'),
       DashboardData('Back Order Rate', '999999999'),
-    ];
+    ];*/
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -62,7 +62,7 @@ class InventorySummaryDashboard extends StatelessWidget {
           },
           itemCount: inventorySummaryList.length,
         ),
-        const Padding(
+/*        const Padding(
           padding: EdgeInsets.only(bottom: 0.0),
           child: GroupTitleWithPeriodMenu(title: 'Inventory Metrics'),
         ),
@@ -79,7 +79,7 @@ class InventorySummaryDashboard extends StatelessWidget {
             return DashboardCard(label: data.label, content: data.content);
           },
           itemCount: inventorySummaryList.length,
-        ),
+        ),*/
       ],
     );
   }

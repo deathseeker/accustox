@@ -105,6 +105,22 @@ abstract class NavigationRepositoryInterface {
   navigateToAddItemToPurchaseOrder();
 
   navigateToPurchaseOrderDetails({required PurchaseOrder purchaseOrder});
+
+  navigateToEditPurchaseOrder({required PurchaseOrder purchaseOrder});
+
+  navigateToIncomingInventoryManagement({required PurchaseOrder purchaseOrder});
+
+  navigateToNewInventoryStockFromPurchaseOrder(
+      {required PurchaseOrderItem purchaseOrderItem,
+      required PurchaseOrder purchaseOrder});
+
+  navigateToProcessSalesOrder();
+
+  navigateToCustomerAccountDetails({required Customer customer});
+
+  navigateToSalesOrderDetails({required String salesOrderID});
+
+  navigateToSalesReportDetails({required String dateInYYYYMMDD});
 }
 
 abstract class DialogInterface {
@@ -171,6 +187,63 @@ abstract class DialogInterface {
       {required BuildContext context,
       required PurchaseOrderItem purchaseOrderItem,
       required WidgetRef ref});
+
+  placeOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced});
+
+  cancelOrderPlacementDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced});
+
+  orderConfirmationDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed});
+
+  cancelOrderConfirmationDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed});
+
+  cancelPurchaseOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder});
+
+  receivePurchaseOrderDialog(
+      {required BuildContext context,
+      required String uid,
+      required PurchaseOrder purchaseOrder});
+
+  processSetAsRetailStock(
+      {required String uid, required String itemID, required Stock stock});
+
+  setAsRetailStockDialog(
+      {required BuildContext context,
+      required String uid,
+      required String itemID,
+      required Stock stock});
+
+  removeFromRetailStockDialog(
+      {required BuildContext context,
+      required String uid,
+      required String itemID,
+      required Stock stock});
+
+  processRemoveFromRetailStock(
+      {required String uid, required String itemID, required Stock stock});
+
+  addCustomItemOrderDialog(
+      {required BuildContext context,
+      required WidgetRef ref,
+      required RetailItem retailItem});
 }
 
 abstract class CategoryInterface {
@@ -339,12 +412,17 @@ abstract class CustomerInterface {
       required String address,
       required String customerType,
       required String uid});
+
+  Stream<CustomerAccount> streamCustomerAccount(
+      {required String uid, required String customerID});
 }
 
 abstract class ScannerInterface {
   Future<String> scanBarcode();
 
   Future<String> scanQRCode();
+
+  Future<void> streamBarcodes({required WidgetRef ref});
 }
 
 abstract class ImageRepositoryInterface {
@@ -383,6 +461,9 @@ abstract class InventoryInterface {
   Stream<List<Inventory>> streamInventoryList({required String uid});
 
   Stream<List<Stock>> streamStockList(
+      {required String uid, required String itemID});
+
+  Stream<List<Stock>> streamRetailStockList(
       {required String uid, required String itemID});
 
   Future<void> addInventoryStock(
@@ -476,6 +557,18 @@ abstract class InventoryInterface {
       required Stock stock,
       required String adjustedSalePrice,
       required String reason});
+
+  Future<void> addStockToRetailStock(
+      {required String uid, required String itemID, required Stock stock});
+
+  Future<void> removeStockFromRetailStock(
+      {required String uid, required String itemID, required Stock stock});
+
+  Future<void> adjustRetailStockFromSalesOrder(
+      {required String uid,
+      required String itemID,
+      required Stock adjustedStock,
+      required String reason});
 }
 
 abstract class DateTimeInterface {
@@ -497,6 +590,11 @@ abstract class DateTimeInterface {
   int getDaysToExpiration({required DateTime expirationDate});
 
   String formatDateTimeToYMdjm({required DateTime dateTime});
+
+  double leadTimeFromPO(
+      {required DateTime orderPlacedOn, required DateTime orderDeliveredOn});
+
+  String formatDateTimeToYYYYMMDD({required DateTime date});
 }
 
 abstract class PerishabilityInterface {
@@ -513,6 +611,8 @@ abstract class CurrencyInterface {
   String formatAsPhilippineCurrency({required num amount});
 
   String formatAsPhilippineCurrencyWithoutSymbol({required num amount});
+
+  String getAveragePrice({required double quantity, required double total});
 }
 
 abstract class StatisticsInterface {
@@ -551,21 +651,159 @@ abstract class ValidatorInterface {
 abstract class PurchaseOrderInterface {
   String createPurchaseOrderNumber({required int a});
 
-  Future<void> addPurchaseOrder({required String uid, required PurchaseOrder purchaseOrder});
+  Future<void> addPurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder});
 
   reviewAndSubmitPurchaseOrder(
       {required GlobalKey<FormState> formKey,
-        required String uid,
-        required Supplier? supplier,
-        required String? deliveryAddress,
-        required DateTime? expectedDeliveryDate,
-        required List<PurchaseOrderItem>? purchaseOrderItemList});
+      required String uid,
+      required Supplier? supplier,
+      required String? deliveryAddress,
+      required DateTime? expectedDeliveryDate,
+      required List<PurchaseOrderItem>? purchaseOrderItemList});
 
   Stream<List<PurchaseOrder>> streamIncomingInventoryList(
       {required String uid});
 
-  getIncomingInventoryState({required bool orderPlaced, required bool orderConfirmed});
+  getIncomingInventoryState(
+      {required bool orderPlaced,
+      required bool orderConfirmed,
+      required bool orderDelivered});
 
   Stream<PurchaseOrder> streamPurchaseOrder(
       {required String uid, required String purchaseOrderID});
+
+  Future<void> updateOrderPlacedStatus(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderPlaced});
+
+  Future<void> updateOrderConfirmedStatus(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required bool orderConfirmed});
+
+  Future<void> cancelPurchaseOrder(
+      {required String uid,
+      required PurchaseOrder purchaseOrder,
+      required String reason});
+
+  checkIfPurchaseOrderChanged(
+      {required PurchaseOrder originalPurchaseOrder,
+      required PurchaseOrder newPurchaseOrder});
+
+  Future<void> updatePurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder});
+
+  processEditPurchaseOrder(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required PurchaseOrder originalPurchaseOrder,
+      required PurchaseOrder newPurchaseOrder});
+
+  Future<void> receivePurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder});
+
+  Future<void> addInventoryStockFromPO(
+      {required String uid,
+      required String itemID,
+      required Stock stock,
+      required Inventory inventory,
+      required double newLeadTime,
+      required PurchaseOrder purchaseOrder});
+
+  reviewAndSubmitStockFromPO(
+      {required GlobalKey<FormState> formKey,
+      required String uid,
+      required Item item,
+      required double stockLevel,
+      required double costPrice,
+      required String salePrice,
+      required String expirationWarning,
+      required Supplier? supplier,
+      required StockLocation? stockLocation,
+      required DateTime expirationDate,
+      required String batchNumber,
+      required DateTime purchaseDate,
+      required Inventory inventory,
+      required PurchaseOrder purchaseOrder});
+
+  Future<void> completeInventoryAndPurchaseOrder(
+      {required String uid, required PurchaseOrder purchaseOrder});
+}
+
+abstract class SalesOrderInterface {
+  Stream<List<RetailItem>> streamRetailItemDataList({required String uid});
+
+  SalesOrderItem getSalesOrderItem(
+      {required RetailItem retailItem, required double quantity});
+
+  List<Stock> getAdjustedStocksFromSO(
+      {required RetailItem retailItem, required double quantity});
+
+  addSalesOrderItem(
+      {required WidgetRef ref,
+      required RetailItem retailItem,
+      required double stockLimit,
+      required double count});
+
+  addCustomSalesOrderItem(
+      {required WidgetRef ref,
+      required RetailItem retailItem,
+      required double stockLimit,
+      required double quantity});
+
+  String createSalesOrderNumber({required int a});
+
+  Future<void> addSalesOrder(
+      {required String uid,
+      required SalesOrder salesOrder,
+      required List<Stock> adjustedStockList});
+
+  Future<void> incrementSaleToDailyDemand(
+      {required String uid, required String itemID, required double sales});
+
+  submitRetailSalesOrder(
+      {required String uid,
+      required List<SalesOrderItem> salesOrderItemList,
+      required String? paymentTerms,
+      required String? orderTotal,
+      required List<Stock> stockList});
+
+  Future<void> updateInventoryStatisticsOnSale(
+      {required String uid, required String itemID});
+
+  Future<void> addAccountSalesOrder(
+      {required String uid,
+      required SalesOrder salesOrder,
+      required List<Stock> adjustedStockList});
+
+  reviewAndSubmitAccountSalesOrder(
+      {required String uid,
+      required List<SalesOrderItem> salesOrderItemList,
+      required Customer? customer,
+      required String? paymentTerms,
+      required String? orderTotal,
+      required List<Stock> stockList});
+
+  Future<SalesOrder> fetchSalesOrder(
+      {required String uid, required String salesOrderID});
+
+  Stream<List<SalesOrder>> streamSalesOrders({required String uid});
+
+  Stream<List<SalesOrder>> streamCurrentSalesOrders({required String uid});
+}
+
+abstract class StringInterface {
+  String removeTrailingZeros({required double value});
+}
+
+abstract class ReportsInterface {
+  Future<void> updateDailySalesReport(
+      {required String uid, required SalesOrder salesOrder});
+
+  Future<SalesReports> fetchSalesReportMasterList({required String uid});
+
+  Future<DailySalesReport> fetchDailySalesReport(
+      {required String uid, required String dateInYYYYMMDD});
 }

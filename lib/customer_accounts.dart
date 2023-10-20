@@ -55,7 +55,7 @@ class CustomerAccountsList extends StatelessWidget {
             itemCount: customerList.length,
             separatorBuilder: (context, index) {
               return const SizedBox(
-                height: 16.0,
+                height: 8.0,
               );
             },
           );
@@ -71,26 +71,30 @@ class CustomerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       borderOnForeground: true,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Wrap(
-          spacing: 16.0,
-          runSpacing: 4.0,
-          children: [
-            InformationWithLabel(
-                label: 'Customer Name', data: customer.customerName),
-            customer.customerType == 'Business/Organization'
-                ? InformationWithLabel(
-                    label: 'Contact Person', data: customer.contactPerson)
-                : const SizedBox(
-                    height: 0.0,
-                    width: 0.0,
-                  ),
-            InformationWithLabel(
-                label: 'Contact Number', data: customer.contactNumber),
-            InformationWithLabel(label: 'Email', data: customer.email),
-            InformationWithLabel(label: 'Address', data: customer.address),
-          ],
+      child: InkWell(
+        onTap: () => navigationController.navigateToCustomerAccountDetails(
+            customer: customer),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Wrap(
+            spacing: 16.0,
+            runSpacing: 4.0,
+            children: [
+              InformationWithLabel(
+                  label: 'Customer Name', data: customer.customerName),
+              customer.customerType == 'Business/Organization'
+                  ? InformationWithLabel(
+                      label: 'Contact Person', data: customer.contactPerson)
+                  : const SizedBox(
+                      height: 0.0,
+                      width: 0.0,
+                    ),
+              InformationWithLabel(
+                  label: 'Contact Number', data: customer.contactNumber),
+              InformationWithLabel(label: 'Email', data: customer.email),
+              InformationWithLabel(label: 'Address', data: customer.address),
+            ],
+          ),
         ),
       ),
     );

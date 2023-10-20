@@ -1,19 +1,22 @@
 // ignore_for_file: library_private_types_in_public_api
+import 'controllers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'enumerated_values.dart';
+import 'providers.dart';
 import 'widget_components.dart';
 import 'color_scheme.dart';
 import 'models.dart';
 import 'text_theme.dart';
 
-class ProcessSalesOrder extends StatefulWidget {
+class ProcessSalesOrder extends ConsumerStatefulWidget {
   const ProcessSalesOrder({super.key});
 
   @override
   _ProcessSalesOrderState createState() => _ProcessSalesOrderState();
 }
 
-class _ProcessSalesOrderState extends State<ProcessSalesOrder> {
+class _ProcessSalesOrderState extends ConsumerState<ProcessSalesOrder> {
   @override
   void initState() {
     // TODO: implement initState
@@ -28,6 +31,11 @@ class _ProcessSalesOrderState extends State<ProcessSalesOrder> {
 
   @override
   Widget build(BuildContext context) {
+    var salesOrderItemList = ref.watch(salesOrderCartNotifierProvider);
+    var totalCost =
+        ref.watch(salesOrderCartNotifierProvider.notifier).getTotalCost();
+    var saleType = ref.watch(saleTypeProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Process Sales Order'),
@@ -45,26 +53,10 @@ class _ProcessSalesOrderState extends State<ProcessSalesOrder> {
               ),
               const Divider(),
               SaleTypeBody(
-                  saleType: SaleType.account,
-                  totalCost: 'Php 999999.99',
-                  salesOrderItemList: [
-                    SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456',
-                        '999 Units', '999999.99', 'Php 999999.99'),
-                    SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456',
-                        '999 Units', '999999.99', 'Php 999999.99'),
-                    SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456',
-                        '999 Units', '999999.99', 'Php 999999.99'),
-                    SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456',
-                        '999 Units', '999999.99', 'Php 999999.99'),
-                    SalesOrderItemListTileData('Item Name', 'SAM-123-ABC-456',
-                        '999 Units', '999999.99', 'Php 999999.99'),
-                  ],
-                  customerList: [
-
-                  ],
-                  salespersonList: [
-                    Salesperson(salespersonName: 'Salesperson Name')
-                  ])
+                saleType: saleType,
+                totalCost: totalCost,
+                salesOrderItemList: salesOrderItemList,
+              )
             ],
           ),
         ),
@@ -74,19 +66,16 @@ class _ProcessSalesOrderState extends State<ProcessSalesOrder> {
 }
 
 class SaleTypeBody extends StatelessWidget {
-  const SaleTypeBody(
-      {super.key,
-      required this.saleType,
-      required this.totalCost,
-      required this.salesOrderItemList,
-      required this.customerList,
-      required this.salespersonList});
+  const SaleTypeBody({
+    super.key,
+    required this.saleType,
+    required this.totalCost,
+    required this.salesOrderItemList,
+  });
 
   final SaleType saleType;
-  final String totalCost;
-  final List<SalesOrderItemListTileData> salesOrderItemList;
-  final List<Customer> customerList;
-  final List<Salesperson> salespersonList;
+  final double totalCost;
+  final List<SalesOrderItem> salesOrderItemList;
 
   @override
   Widget build(BuildContext context) {
@@ -99,10 +88,7 @@ class SaleTypeBody extends StatelessWidget {
         break;
       case SaleType.account:
         saleTypeBody = AccountBody(
-            customerList: customerList,
-            salespersonList: salespersonList,
-            totalCost: totalCost,
-            salesOrderItemList: salesOrderItemList);
+            totalCost: totalCost, salesOrderItemList: salesOrderItemList);
         break;
     }
 
@@ -114,11 +100,14 @@ class RetailBody extends StatelessWidget {
   const RetailBody(
       {super.key, required this.totalCost, required this.salesOrderItemList});
 
-  final String totalCost;
-  final List<SalesOrderItemListTileData> salesOrderItemList;
+  final double totalCost;
+  final List<SalesOrderItem> salesOrderItemList;
 
   @override
   Widget build(BuildContext context) {
+    var paymentTerms = PaymentTerm.cash.label;
+    var formattedTotalCost =
+        currencyController.formatAsPhilippineCurrency(amount: totalCost);
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,11 +117,27 @@ class RetailBody extends StatelessWidget {
           child: GroupTitle(title: 'Items'),
         ),
         SalesOrderItemListCard(
-            totalCost: totalCost, salesOrderItemList: salesOrderItemList),
+            totalCost: formattedTotalCost,
+            salesOrderItemList: salesOrderItemList),
         ButtonBar(
           children: [
-            OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
-            FilledButton(onPressed: () {}, child: const Text('Create Order'))
+            OutlinedButton(
+                onPressed: () => navigationController.navigateToPreviousPage(),
+                child: const Text('Cancel')),
+            Consumer(builder: (context, ref, child) {
+              var user = ref.watch(userProvider);
+              var stockList = ref.watch(adjustedStockListNotifierProvider);
+              return FilledButton(
+                  onPressed: user == null
+                      ? null
+                      : () => salesOrderController.submitRetailSalesOrder(
+                          uid: user.uid,
+                          salesOrderItemList: salesOrderItemList,
+                          paymentTerms: paymentTerms,
+                          orderTotal: totalCost.toString(),
+                          stockList: stockList),
+                  child: const Text('Create Order'));
+            })
           ],
         )
       ],
@@ -145,7 +150,7 @@ class SalesOrderItemListCard extends StatelessWidget {
       {super.key, required this.totalCost, required this.salesOrderItemList});
 
   final String totalCost;
-  final List<SalesOrderItemListTileData> salesOrderItemList;
+  final List<SalesOrderItem> salesOrderItemList;
 
   @override
   Widget build(BuildContext context) {
@@ -177,82 +182,98 @@ class SalesOrderItemListCard extends StatelessWidget {
   }
 }
 
-class AccountBody extends StatefulWidget {
+class AccountBody extends ConsumerStatefulWidget {
   const AccountBody(
-      {super.key,
-      required this.customerList,
-      required this.salespersonList,
-      required this.totalCost,
-      required this.salesOrderItemList});
+      {super.key, required this.totalCost, required this.salesOrderItemList});
 
-  final String totalCost;
-  final List<SalesOrderItemListTileData> salesOrderItemList;
-  final List<Customer> customerList;
-  final List<Salesperson> salespersonList;
+  final double totalCost;
+  final List<SalesOrderItem> salesOrderItemList;
 
   @override
   _AccountBodyState createState() => _AccountBodyState();
 }
 
-class _AccountBodyState extends State<AccountBody> {
+class _AccountBodyState extends ConsumerState<AccountBody> {
+  late final double totalCost;
+  late final List<SalesOrderItem> salesOrderItemList;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+    totalCost = widget.totalCost;
+    salesOrderItemList = widget.salesOrderItemList;
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
+    var customerProvider = ref.watch(streamCustomerListProvider);
+    var user = ref.watch(userProvider);
+    var stockList = ref.watch(adjustedStockListNotifierProvider);
+    var customerSelection = ref.watch(customerSelectionProvider);
+    var paymentTermsSelection = ref.watch(paymentTermsProvider);
+    var formattedTotalCost =
+        currencyController.formatAsPhilippineCurrency(amount: totalCost);
+
+    return customerProvider.when(
+        data: (data) {
+          return Column(
             mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Flexible(
-                  child:
-                      CustomerDropDownMenu(customerList: widget.customerList)),
-              const Padding(padding: EdgeInsets.only(left: 16.0)),
-              Flexible(
-                  child: TextButton(
-                      onPressed: () {}, child: const Text('New Customer'))),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    const Flexible(child: PaymentTermsDropDownMenu()),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    const Flexible(child: CustomerDropDownMenu()),
+                    const Padding(padding: EdgeInsets.only(left: 16.0)),
+                    Flexible(
+                        child: TextButton(
+                            onPressed: () => navigationController
+                                .navigateToNewCustomerAccount(),
+                            child: const Text('New Customer'))),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: GroupTitle(title: 'Items'),
+              ),
+              SalesOrderItemListCard(
+                  totalCost: formattedTotalCost,
+                  salesOrderItemList: widget.salesOrderItemList),
+              ButtonBar(
+                children: [
+                  OutlinedButton(
+                      onPressed: () =>
+                          navigationController.navigateToPreviousPage(),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: user == null
+                          ? null
+                          : () => salesOrderController
+                              .reviewAndSubmitAccountSalesOrder(
+                                  uid: user.uid,
+                                  customer: customerSelection,
+                                  salesOrderItemList: salesOrderItemList,
+                                  paymentTerms: paymentTermsSelection.label,
+                                  orderTotal: totalCost.toString(),
+                                  stockList: stockList),
+                      child: const Text('Create Order'))
+                ],
+              )
             ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              const PaymentTermsDropDownMenu(),
-              const Padding(padding: EdgeInsets.only(left: 16.0)),
-              SalespersonDropDownMenu(salespersonList: widget.salespersonList)
-            ],
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.0),
-          child: GroupTitle(title: 'Items'),
-        ),
-        SalesOrderItemListCard(
-            totalCost: widget.totalCost,
-            salesOrderItemList: widget.salesOrderItemList),
-        ButtonBar(
-          children: [
-            OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
-            FilledButton(onPressed: () {}, child: const Text('Create Order'))
-          ],
-        )
-      ],
-    );
+          );
+        },
+        error: (e, st) => const Center(
+            child: ErrorMessage(errorMessage: 'Something went wrong...')),
+        loading: () => const Center(child: LoadingWidget()));
   }
 }

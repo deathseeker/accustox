@@ -1,22 +1,23 @@
-// ignore_for_file: library_private_types_in_public_api
-import 'controllers.dart';
-import 'providers.dart';
+import 'widget_components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'color_scheme.dart';
+import 'controllers.dart';
 import 'models.dart';
+import 'providers.dart';
 import 'text_theme.dart';
-import 'widget_components.dart';
 
-class NewPurchaseOrder extends ConsumerStatefulWidget {
-  const NewPurchaseOrder({super.key});
+class EditPurchaseOrder extends ConsumerStatefulWidget {
+  const EditPurchaseOrder(this.purchaseOrder, {super.key});
+
+  final PurchaseOrder purchaseOrder;
 
   @override
-  _NewPurchaseOrderState createState() => _NewPurchaseOrderState();
+  _EditPurchaseOrderState createState() => _EditPurchaseOrderState();
 }
 
-class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
+class _EditPurchaseOrderState extends ConsumerState<EditPurchaseOrder> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController deliveryAddressController =
@@ -28,11 +29,28 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
 
   late Supplier selectedSupplier;
   late DateTime selectedExpectedDeliveryDate;
+  late PurchaseOrder purchaseOrder;
+  late Supplier initialSupplier;
 
   @override
   void initState() {
     super.initState();
-    selectedExpectedDeliveryDate = DateTime.now();
+    purchaseOrder = widget.purchaseOrder;
+    selectedExpectedDeliveryDate = purchaseOrder.expectedDeliveryDate!;
+    deliveryAddressController.text = purchaseOrder.deliveryAddress!;
+    expectedDeliveryDateController.text = dateTimeController
+        .formatDateTimeToYMd(dateTime: purchaseOrder.expectedDeliveryDate!);
+    initialSupplier = Supplier.fromMap(widget.purchaseOrder.supplier);
+    Future.delayed(Duration.zero, () async {
+      var itemOrderList = purchaseOrder.itemOrderList!;
+      for (var itemOrder in itemOrderList) {
+        PurchaseOrderItem purchaseOrderItem =
+            PurchaseOrderItem.fromMap(itemOrder);
+        ref
+            .read(purchaseOrderCartNotifierProvider.notifier)
+            .addItem(purchaseOrderItem);
+      }
+    });
   }
 
   @override
@@ -52,7 +70,7 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Purchase Order'),
+        title: const Text('Edit Purchase Order'),
       ),
       body: asyncSupplierList.when(
           data: (data) {
@@ -65,9 +83,9 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: SupplierDropDownMenu(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: EditSupplierDropDownMenu(initialSupplier),
                       ),
                       Row(
                         textBaseline: TextBaseline.alphabetic,
@@ -76,16 +94,18 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
                           Flexible(
                             flex: 5,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
                               child: TextFormField(
-                                autovalidateMode: AutovalidateMode.onUserInteraction,
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                                 controller: deliveryAddressController,
                                 focusNode: deliveryAddressNode,
                                 decoration: const InputDecoration(
                                     border: OutlineInputBorder(),
                                     labelText: 'Deliver To'),
-                                keyboardType: TextInputType.streetAddress,
-                                textInputAction: TextInputAction.done,
+                                keyboardType: TextInputType.name,
+                                // You can specify the keyboard type
                                 validator: (value) {
                                   if (value!.isEmpty) {
                                     return 'Please enter delivery address';
@@ -99,7 +119,8 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
                           Flexible(
                             flex: 2,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
                               child: GestureDetector(
                                 onTap: () async {
                                   var selectedDate =
@@ -109,7 +130,8 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
                                           firstDate: DateTime(2000),
                                           lastDate: DateTime(2101));
                                   setState(() {
-                                    selectedExpectedDeliveryDate = selectedDate!;
+                                    selectedExpectedDeliveryDate =
+                                        selectedDate!;
                                     String formattedDate =
                                         DateFormat.yMd().format(selectedDate);
                                     expectedDeliveryDateController.text =
@@ -118,7 +140,8 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
                                 },
                                 child: AbsorbPointer(
                                   child: TextFormField(
-                                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                                    autovalidateMode:
+                                        AutovalidateMode.onUserInteraction,
                                     controller: expectedDeliveryDateController,
                                     decoration: const InputDecoration(
                                       border: OutlineInputBorder(),
@@ -146,27 +169,38 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
                                 .navigateToAddItemToPurchaseOrder(),
                             buttonLabel: 'Add Item Order'),
                       ),
-                      const NewPurchaseOrderItemListCard(),
+                      const EditPurchaseOrderItemListCard(),
                       ButtonBar(
                         children: [
                           FilledButton(
                               onPressed: user == null
                                   ? null
                                   : () {
-                                      var supplier = supplierSelection;
-                                      purchaseOrderController
-                                          .reviewAndSubmitPurchaseOrder(
-                                              formKey: _formKey,
-                                              uid: user.uid,
+                                      var supplier = supplierSelection!.toMap();
+                                      var itemOrderList = purchaseOrder
+                                          .getPurchaseOrderItemListMap(
+                                              purchaseOrderItemList);
+                                      PurchaseOrder originalPurchaseOrder =
+                                          purchaseOrder;
+                                      PurchaseOrder newPurchaseOrder =
+                                          purchaseOrder.copyWith(
                                               supplier: supplier,
                                               deliveryAddress:
-                                                  deliveryAddressController.text,
+                                                  deliveryAddressController
+                                                      .text,
                                               expectedDeliveryDate:
                                                   selectedExpectedDeliveryDate,
-                                              purchaseOrderItemList:
-                                                  purchaseOrderItemList);
+                                              itemOrderList: itemOrderList);
+                                      purchaseOrderController
+                                          .processEditPurchaseOrder(
+                                              formKey: _formKey,
+                                              uid: user.uid,
+                                              originalPurchaseOrder:
+                                                  originalPurchaseOrder,
+                                              newPurchaseOrder:
+                                                  newPurchaseOrder);
                                     },
-                              child: const Text('Create Order'))
+                              child: const Text('Edit Order'))
                         ],
                       )
                     ],
@@ -182,8 +216,8 @@ class _NewPurchaseOrderState extends ConsumerState<NewPurchaseOrder> {
   }
 }
 
-class NewPurchaseOrderItemListCard extends ConsumerWidget {
-  const NewPurchaseOrderItemListCard({super.key});
+class EditPurchaseOrderItemListCard extends ConsumerWidget {
+  const EditPurchaseOrderItemListCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

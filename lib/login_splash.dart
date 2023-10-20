@@ -15,8 +15,8 @@ class LoginSplash extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
-                height: 50.0,
-                width: 50.0,
+                height: 300.0,
+                width: 300.0,
                 child: Image.asset(
                   'assets/Fingerprint-bro.png',
                   fit: BoxFit.contain,

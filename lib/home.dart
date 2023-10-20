@@ -1,8 +1,8 @@
-import 'package:accustox/current_inventory.dart';
-import 'package:accustox/dashboard.dart';
-import 'package:accustox/incoming_inventory.dart';
-import 'package:accustox/navigation_drawer.dart';
-import 'package:accustox/outgoing_inventory.dart';
+import 'new_sales_order.dart';
+import 'current_inventory.dart';
+import 'incoming_inventory.dart';
+import 'navigation_drawer.dart';
+import 'outgoing_inventory.dart';
 import 'package:flutter/material.dart';
 import 'color_scheme.dart';
 
@@ -23,8 +23,8 @@ class _HomeState extends State<Home> {
   double groupAlignment = -1.0;
 
   List<NavigationRailDestination> destinations = [
-    const NavigationRailDestination(
-        icon: Icon(Icons.dashboard_outlined), label: Text('Dashboard')),
+    /*const NavigationRailDestination(
+        icon: Icon(Icons.dashboard_outlined), label: Text('Dashboard')),*/
     const NavigationRailDestination(
         icon: Icon(Icons.inventory_outlined), label: Text('Current')),
     const NavigationRailDestination(
@@ -34,7 +34,7 @@ class _HomeState extends State<Home> {
   ];
 
   List<Widget> views = [
-    const Dashboard(),
+    /*const Dashboard(),*/
     const CurrentInventory(),
     const IncomingInventory(),
     const OutgoingInventory(),
@@ -42,13 +42,11 @@ class _HomeState extends State<Home> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
   }
 
@@ -95,7 +93,8 @@ class FloatingActionButtonPOS extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
-      onPressed: () {},
+      onPressed: () => Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const NewSalesOrder())),
       backgroundColor: lightColorScheme.tertiaryContainer,
       child: Icon(
         Icons.point_of_sale_outlined,

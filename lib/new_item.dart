@@ -1,4 +1,4 @@
-import 'package:accustox/default_values.dart';
+import 'default_values.dart';
 import 'package:intl/intl.dart';
 import 'controllers.dart';
 import 'package:flutter/material.dart';
@@ -443,9 +443,13 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                           String barcodeData =
                               await scannerController.scanBarCode();
 
-                          setState(() {
-                            eanController.text = barcodeData;
-                          });
+                          if (barcodeData == '-1') {
+                            null;
+                          } else {
+                            setState(() {
+                              eanController.text = barcodeData;
+                            });
+                          }
                         },
                         child: const Icon(Icons.barcode_reader))
                   ],
@@ -853,7 +857,6 @@ class _NewItemBodyState extends ConsumerState<NewItemBody> {
                                     .read(categorySelectionProvider)
                                     .map((e) => e.toMap())
                                     .toList();
-
 
                                 Item item = Item(
                                     itemName: itemNameController.text,

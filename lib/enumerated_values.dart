@@ -1,4 +1,3 @@
-import 'models.dart';
 
 enum ReportingPeriod {
   today('Today'),
@@ -28,7 +27,8 @@ enum StockLevelState {
 enum IncomingInventoryState {
   forPlacement('For Placement'),
   forConfirmation('For Confirmation'),
-  forDelivery('For Delivery');
+  forDelivery('For Delivery'),
+  forInventory('For Inventory');
 
   final String label;
 
@@ -92,13 +92,13 @@ enum SaleType {
 
 enum PaymentTerm {
   cash('Cash', 'Payment is due on order'),
-  net30('Net 30', 'Payment is due 30 days from the date of the invoice.'),
-  net60('Net 60', 'Payment is due 60 days from the date of the invoice.'),
-  net90('Net 90', 'Payment is due 90 days from the date of the invoice.'),
   dueOnReceipt('Due on Receipt',
       'Payment is due immediately upon receipt of the invoice.'),
   cashOnDelivery('Cash on Delivery',
       'Payment is made at the time of delivery of goods or services.'),
+  net30('Net 30', 'Payment is due 30 days from the date of the invoice.'),
+  net60('Net 60', 'Payment is due 60 days from the date of the invoice.'),
+  net90('Net 90', 'Payment is due 90 days from the date of the invoice.'),
   advancePayment('Advance Payment',
       'The customer pays in full before the goods or services are delivered.'),
   partialPayment('Partial Payment',
@@ -213,7 +213,8 @@ enum IncomingInventoryFilter {
   all('All'),
   forPlacement('For Placement'),
   forConfirmation('For Confirmation'),
-  forDelivery('For Delivery');
+  forDelivery('For Delivery'),
+  forInventory('For Inventory');
 
   final String label;
 
@@ -239,3 +240,7 @@ enum AdjustmentType {
 
   const AdjustmentType(this.label);
 }
+
+/*enum ScanState {
+
+}*/

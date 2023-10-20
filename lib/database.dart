@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
+import 'default_values.dart';
+import 'package:collection/collection.dart';
 import 'color_scheme.dart';
 import 'controllers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -86,6 +88,58 @@ class DatabaseService {
 
   Stream<User?> streamAuthStateChanges() {
     return _auth.authStateChanges();
+  }
+
+  Stream<CustomerAccount> streamCustomerAccount(String uid, String customerID) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('CustomerAccounts')
+        .doc(customerID)
+        .snapshots()
+        .map((doc) => CustomerAccount.fromFirestore(doc));
+  }
+
+  Future<DailySalesReport> fetchDailySalesReport(
+      String uid, String dateInYYYYMMDD) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('DailySalesReports')
+        .doc(dateInYYYYMMDD);
+
+    return documentReference
+        .get()
+        .then((snapshot) => DailySalesReport.fromFirestore(snapshot));
+  }
+
+  Future<SalesReports> fetchSalesReportMasterList(String uid) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('BusinessData')
+        .doc('DailySalesReportMasterList');
+
+    return documentReference.get().then((snapshot) {
+      return SalesReports.fromFirestore(snapshot);
+    });
+  }
+
+  Future<SalesOrder> fetchSalesOrder(String uid, String salesOrderID) {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('SalesOrders')
+        .doc(salesOrderID);
+
+    return documentReference.get().then((snapshot) {
+      if (snapshot.exists) {
+        return SalesOrder.fromFirestore(snapshot);
+      } else {
+        // Handle the case where the document doesn't exist.
+        throw Exception('SalesOrder with ID $salesOrderID not found.');
+      }
+    });
   }
 
   Stream<UserProfile> streamUserProfile(String uid) {
@@ -498,6 +552,12 @@ class DatabaseService {
         .collection('InventoryData')
         .doc('Items');
 
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(oldItem.itemID);
+
     await _firestore.runTransaction((transaction) async {
       transaction.update(documentReference, {
         'itemList': FieldValue.arrayRemove([oldItem.toFirestore()])
@@ -506,6 +566,8 @@ class DatabaseService {
       transaction.update(documentReference, {
         'itemList': FieldValue.arrayUnion([newItem.toFirestore()])
       });
+
+      transaction.update(inventoryReference, {'item': newItem.toFirestore()});
     });
   }
 
@@ -516,11 +578,29 @@ class DatabaseService {
         .collection('InventoryData')
         .doc('Items');
 
-    await _firestore.runTransaction((transaction) async {
-      transaction.update(documentReference, {
-        'itemList': FieldValue.arrayRemove([item.toFirestore()])
-      });
-    });
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(item.itemID);
+
+    DocumentSnapshot inventorySnapshot = await inventoryReference.get();
+
+    Inventory inventory = Inventory.fromFirestore(inventorySnapshot);
+
+    if (inventory.stockLevel! > 0) {
+      snackBarController.showSnackBarError(
+          'You cannot delete an item which has a nonzero stock...');
+    } else {
+      snackBarController.showLoadingSnackBar(message: 'Deleting item...');
+      await _firestore.runTransaction((transaction) async {
+        transaction.update(documentReference, {
+          'itemList': FieldValue.arrayRemove([item.toFirestore()])
+        });
+        transaction.delete(inventoryReference);
+      }).whenComplete(() =>
+          snackBarController.showSnackBar('Successfully deleted item...'));
+    }
   }
 
   Future<void> updateItemAvailability(
@@ -543,6 +623,16 @@ class DatabaseService {
     });
   }
 
+  Stream<List<RetailItem>> streamRetailItemDataList(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => RetailItem.fromFirestore(doc)).toList());
+  }
+
   Stream<List<Item>> streamItemDataList(String uid) {
     return _firestore
         .collection('Users')
@@ -563,6 +653,53 @@ class DatabaseService {
         .doc(itemID)
         .collection('Stocks')
         .orderBy('inventoryCreatedOn', descending: false)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Stock.fromFirestore(doc)).toList());
+  }
+
+  Stream<List<SalesOrder>> streamSalesOrders(String uid) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('SalesOrders')
+        .orderBy('transactionMadeOn', descending: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => SalesOrder.fromFirestore(doc)).toList());
+  }
+
+  Stream<List<SalesOrder>> streamCurrentSalesOrders(String uid) {
+    final dateTimeNow = DateTime.now();
+    final startOfDayDateTime =
+        DateTime(dateTimeNow.year, dateTimeNow.month, dateTimeNow.day);
+    final nextDayDateTime = startOfDayDateTime.add(const Duration(days: 1));
+    final startOfDay =
+        dateTimeController.dateTimeToTimestamp(dateTime: startOfDayDateTime);
+    final nextDay =
+        dateTimeController.dateTimeToTimestamp(dateTime: nextDayDateTime);
+
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('SalesOrders')
+        .where('transactionMadeOn', isGreaterThanOrEqualTo: startOfDay)
+        .where('transactionMadeOn', isLessThan: nextDay)
+        .orderBy('transactionMadeOn', descending: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => SalesOrder.fromFirestore(doc)).toList());
+  }
+
+  Stream<List<Stock>> streamRetailStockList(String uid, String itemID) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID)
+        .collection('Stocks')
+        .orderBy('inventoryCreatedOn', descending: false)
+        .where('forRetailSale', isEqualTo: true)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map((doc) => Stock.fromFirestore(doc)).toList());
@@ -711,7 +848,17 @@ class DatabaseService {
         .collection('BusinessData')
         .doc('Customers');
 
+    DocumentReference customerAccountReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('CustomerAccounts')
+        .doc(customer.customerID);
+
+    CustomerAccount customerAccount = CustomerAccount(
+        customer: customer.toFirestore(), transactionHistory: []);
+
     await _firestore.runTransaction((transaction) async {
+      transaction.set(customerAccountReference, customerAccount.toFirestore());
       transaction.update(documentReference, {
         'customerList': FieldValue.arrayUnion([customer.toFirestore()])
       });
@@ -1177,6 +1324,200 @@ class DatabaseService {
     });
   }
 
+  Future<void> updateDailySalesReport(String uid, SalesOrder salesOrder) async {
+    DateTime now = DateTime.now();
+    String date = dateTimeController.formatDateTimeToYYYYMMDD(date: now);
+
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('DailySalesReports')
+        .doc(date);
+
+    DocumentReference masterListReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('BusinessData')
+        .doc('DailySalesReportMasterList');
+
+    final DocumentSnapshot documentSnapshot = await documentReference.get();
+
+    if (documentSnapshot.exists) {
+      await _firestore.runTransaction((transaction) async {
+        transaction.update(documentReference, {
+          'salesOrders': FieldValue.arrayUnion([salesOrder.toFirestore()])
+        });
+        transaction.update(masterListReference, {
+          'salesReports': FieldValue.arrayUnion([date])
+        });
+      });
+    } else {
+      DailySalesReport dailySalesReport = DailySalesReport(
+          date: DateTime(now.year, now.month, now.day),
+          dateString: date,
+          salesOrders: [salesOrder.toFirestore()]);
+      await _firestore.runTransaction((transaction) async {
+        transaction.set(documentReference, dailySalesReport.toFirestore());
+        transaction.set(
+            masterListReference,
+            {
+              'salesReports': FieldValue.arrayUnion([date])
+            },
+            SetOptions(merge: true));
+      });
+    }
+  }
+
+  Future<void> addSalesOrder(
+      String uid, SalesOrder salesOrder, List<Stock> adjustedStockList) async {
+    List<SalesOrderItem> salesOrderItemList =
+        salesOrder.getSalesOrderItemList();
+
+    late String soNumber;
+    DocumentReference salesOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('SalesOrders')
+        .doc(salesOrder.salesOrderID);
+
+    DocumentReference salesOrderIDReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('BusinessData')
+        .doc('SalesOrderNumber');
+
+    await _firestore.runTransaction((transaction) async {
+      var salesOrderIDDoc = await transaction.get(salesOrderIDReference);
+
+      int salesOrderNumber = salesOrderIDDoc.get('salesOrderNumber') + 1;
+
+      String salesOrderNumberToFirestore =
+          salesOrderController.createSalesOrderNumber(a: salesOrderNumber);
+
+      soNumber = salesOrderNumberToFirestore;
+
+      salesOrder.update(salesOrderNumber: soNumber);
+
+      transaction.update(
+          salesOrderIDReference, {'salesOrderNumber': FieldValue.increment(1)});
+
+      transaction.set(salesOrderReference, salesOrder.toFirestore());
+    }).whenComplete(() async {
+      await reportsController.updateDailySalesReport(
+          uid: uid, salesOrder: salesOrder);
+
+      await Future.wait(adjustedStockList.map((stock) {
+        Item item = Item.fromMap(stock.item!);
+        var itemID = item.itemID!;
+
+        return inventoryController.adjustRetailStockFromSalesOrder(
+            uid: uid,
+            itemID: itemID,
+            adjustedStock: stock,
+            reason: 'Ref: $soNumber');
+      }));
+
+      await Future.wait(salesOrderItemList.map((salesOrderItem) {
+        Item item = Item.fromMap(salesOrderItem.item!);
+        var itemID = item.itemID;
+
+        return salesOrderController.incrementSaleToDailyDemand(
+            uid: uid, itemID: itemID!, sales: salesOrderItem.quantity!);
+      }));
+    }).whenComplete(() async {
+      await Future.wait(salesOrderItemList.map((salesOrderItem) {
+        Item item = Item.fromMap(salesOrderItem.item!);
+        var itemID = item.itemID;
+        return salesOrderController.updateInventoryStatisticsOnSale(
+            uid: uid, itemID: itemID!);
+      }));
+    });
+  }
+
+  Future<void> addAccountSalesOrder(
+      String uid, SalesOrder salesOrder, List<Stock> adjustedStockList) async {
+    List<SalesOrderItem> salesOrderItemList =
+        salesOrder.getSalesOrderItemList();
+    Customer customer = Customer.fromMap(salesOrder.customer!);
+
+    late String soNumber;
+    DocumentReference salesOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('SalesOrders')
+        .doc(salesOrder.salesOrderID);
+
+    DocumentReference salesOrderIDReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('BusinessData')
+        .doc('SalesOrderNumber');
+
+    DocumentReference customerAccountReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('CustomerAccounts')
+        .doc(customer.customerID);
+
+    await _firestore.runTransaction((transaction) async {
+      var salesOrderIDDoc = await transaction.get(salesOrderIDReference);
+
+      int salesOrderNumber = salesOrderIDDoc.get('salesOrderNumber') + 1;
+
+      String salesOrderNumberToFirestore =
+          salesOrderController.createSalesOrderNumber(a: salesOrderNumber);
+
+      soNumber = salesOrderNumberToFirestore;
+
+      salesOrder.update(salesOrderNumber: soNumber);
+
+      transaction.update(
+          salesOrderIDReference, {'salesOrderNumber': FieldValue.increment(1)});
+
+      transaction.set(salesOrderReference, salesOrder.toFirestore());
+
+      CustomerSalesTransaction customerSalesTransaction =
+          CustomerSalesTransaction(
+              salesOrderID: salesOrder.salesOrderID!,
+              salesOrderNumber: soNumber,
+              transactionMadeOn: salesOrder.transactionMadeOn!);
+
+      transaction.update(customerAccountReference, {
+        'transactionHistory':
+            FieldValue.arrayUnion([customerSalesTransaction.toFirestore()])
+      });
+    }).whenComplete(() async {
+      await reportsController.updateDailySalesReport(
+          uid: uid, salesOrder: salesOrder);
+
+      await Future.wait(adjustedStockList.map((stock) {
+        Item item = Item.fromMap(stock.item!);
+        var itemID = item.itemID!;
+
+        return inventoryController.adjustRetailStockFromSalesOrder(
+            uid: uid,
+            itemID: itemID,
+            adjustedStock: stock,
+            reason: 'Ref: $soNumber');
+      }));
+
+      await Future.wait(salesOrderItemList.map((salesOrderItem) {
+        Item item = Item.fromMap(salesOrderItem.item!);
+        var itemID = item.itemID;
+
+        return salesOrderController.incrementSaleToDailyDemand(
+            uid: uid, itemID: itemID!, sales: salesOrderItem.quantity!);
+      }));
+    }).whenComplete(() async {
+      await Future.wait(salesOrderItemList.map((salesOrderItem) {
+        Item item = Item.fromMap(salesOrderItem.item!);
+        var itemID = item.itemID;
+        return salesOrderController.updateInventoryStatisticsOnSale(
+            uid: uid, itemID: itemID!);
+      }));
+    });
+  }
+
   Stream<PurchaseOrder> streamPurchaseOrder(
       String uid, String purchaseOrderID) {
     return _firestore
@@ -1188,6 +1529,18 @@ class DatabaseService {
         .map((doc) => PurchaseOrder.fromFirestore(doc));
   }
 
+  Stream<PurchaseOrderItemManagementFlags>
+      streamPurchaseOrderItemManagementFlags(
+          String uid, String purchaseOrderID) {
+    return _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrderID)
+        .snapshots()
+        .map((doc) => PurchaseOrderItemManagementFlags.fromFirestore(doc));
+  }
+
   Future<void> updateOrderPlacedStatus(
       String uid, PurchaseOrder purchaseOrder, bool orderPlaced) async {
     DocumentReference purchaseOrderReference = _firestore
@@ -1197,7 +1550,12 @@ class DatabaseService {
         .doc(purchaseOrder.purchaseOrderID);
 
     await _firestore.runTransaction((transaction) async {
-      transaction.update(purchaseOrderReference, {'orderPlaced': orderPlaced});
+      transaction.update(purchaseOrderReference, {
+        'orderPlaced': orderPlaced,
+        'orderPlacedOn': orderPlaced
+            ? dateTimeController.dateTimeToTimestamp(dateTime: DateTime.now())
+            : defaultTimeStamp
+      });
     });
   }
 
@@ -1210,8 +1568,452 @@ class DatabaseService {
         .doc(purchaseOrder.purchaseOrderID);
 
     await _firestore.runTransaction((transaction) async {
-      transaction
-          .update(purchaseOrderReference, {'orderConfirmed': orderConfirmed});
+      transaction.update(purchaseOrderReference, {
+        'orderConfirmed': orderConfirmed,
+        'orderConfirmedOn': orderConfirmed
+            ? dateTimeController.dateTimeToTimestamp(dateTime: DateTime.now())
+            : defaultTimeStamp
+      });
+    });
+  }
+
+  Future<void> cancelPurchaseOrder(
+      String uid, PurchaseOrder purchaseOrder, String reason) async {
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    DocumentReference cancelledPurchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('CancelledPurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    CancelledPurchaseOrder cancelledPurchaseOrder =
+        CancelledPurchaseOrder.fromPurchaseOrder(
+            purchaseOrder, true, DateTime.now(), reason);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.set(cancelledPurchaseOrderReference,
+          cancelledPurchaseOrder.toFirestore());
+      transaction.delete(purchaseOrderReference);
+    });
+  }
+
+  Future<void> updatePurchaseOrder(
+      String uid, PurchaseOrder purchaseOrder) async {
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(purchaseOrderReference, purchaseOrder.toFirestore());
+    });
+  }
+
+  Future<void> receivePurchaseOrder(
+      String uid, PurchaseOrder purchaseOrder) async {
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    var purchaseOrderItemList = purchaseOrder.getPurchaseOrderItemList();
+    var itemManagementFlagList =
+        purchaseOrderItemList.map((e) => {'${e.itemID}': false}).toList();
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(purchaseOrderReference, {
+        'orderDelivered': true,
+        'orderDeliveredOn':
+            dateTimeController.dateTimeToTimestamp(dateTime: DateTime.now()),
+        'itemManagementFlagList': itemManagementFlagList
+      });
+    });
+  }
+
+  Future<void> incrementSaleToDailyDemand(
+      String uid, String itemID, double sales) async {
+    DocumentReference itemDailyDemandReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID)
+        .collection('Data')
+        .doc('ItemDemandHistory');
+
+    final today =
+        dateTimeController.formatDateTimeToYMd(dateTime: DateTime.now());
+
+    final DocumentSnapshot documentSnapshot =
+        await itemDailyDemandReference.get();
+
+    if (documentSnapshot.exists) {
+      await _firestore.runTransaction((transaction) async {
+        var itemDemandHistoryDocument =
+            ItemDemandHistoryDocument.fromFirestore(documentSnapshot);
+        var itemDemandHistory = itemDemandHistoryDocument.itemDemandHistory;
+        var currentDemand = itemDemandHistory!
+            .firstWhereOrNull((map) => map.containsValue(today));
+
+        if (currentDemand == null) {
+          transaction.update(itemDailyDemandReference, {
+            'itemDemandHistory': FieldValue.arrayUnion([
+              {'date': today, 'sales': sales}
+            ])
+          });
+        } else {
+          var newDemand = Map.from(currentDemand);
+          newDemand['sales'] = newDemand['sales'] + sales;
+          transaction.update(itemDailyDemandReference, {
+            'itemDemandHistory': FieldValue.arrayRemove([currentDemand])
+          });
+          transaction.update(itemDailyDemandReference, {
+            'itemDemandHistory': FieldValue.arrayUnion([newDemand])
+          });
+        }
+      });
+    } else {
+      await _firestore.runTransaction((transaction) async {
+        transaction.set(itemDailyDemandReference, {
+          'itemDemandHistory': [
+            {'date': today, 'sales': sales}
+          ]
+        });
+      });
+    }
+  }
+
+  Future<void> updatePurchaseOrderItemManagementFlag(
+      String uid, PurchaseOrder purchaseOrder, String itemID) async {
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(purchaseOrderReference, {
+        'itemManagementList': FieldValue.arrayRemove([
+          {itemID: false}
+        ])
+      });
+
+      transaction.update(purchaseOrderReference, {
+        'itemManagementList': FieldValue.arrayUnion([
+          {itemID: true}
+        ])
+      });
+    });
+  }
+
+  Future<void> addInventoryStockFromPO(
+      String uid,
+      String itemID,
+      Stock stock,
+      Inventory inventory,
+      double newLeadTime,
+      PurchaseOrder purchaseOrder) async {
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID);
+
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(stock.stockID);
+
+    var inventoryTransactionID = itemController.getItemID();
+    var purchaseOrderNumber = purchaseOrder.purchaseOrderNumber;
+    PurchaseOrderItem purchaseOrderItem =
+        purchaseOrder.getPurchaseOrderItem(itemID);
+    PurchaseOrderItem updatedPurchaseOrderItem =
+        purchaseOrderItem.copyWith(addedToInventory: true);
+
+    InventoryTransaction inventoryTransaction = InventoryTransaction(
+        inventoryTransactionID: inventoryTransactionID,
+        transactionType: 'Added Stock',
+        quantityChange: stock.stockLevel!,
+        transactionMadeOn: DateTime.now(),
+        reason: 'Ref: $purchaseOrderNumber',
+        stock: stock.toFirestore());
+
+    DocumentReference inventoryTransactionReference =
+        inventoryReference.collection('History').doc(inventoryTransactionID);
+
+    Map<String, dynamic> data =
+        statisticsController.getInventoryStatisticsOnStockAdd(
+            inventory: inventory,
+            newLeadTime: newLeadTime,
+            stockLevel: stock.stockLevel!,
+            costPrice: stock.costPrice!);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.set(stockReference, stock.toFirestore());
+      transaction.update(inventoryReference, data);
+      transaction.set(
+          inventoryTransactionReference, inventoryTransaction.toFirestore());
+      transaction.update(purchaseOrderReference, {
+        'itemOrderList':
+            FieldValue.arrayRemove([purchaseOrderItem.toFirestore()])
+      });
+
+      transaction.update(purchaseOrderReference, {
+        'itemOrderList':
+            FieldValue.arrayUnion([updatedPurchaseOrderItem.toFirestore()])
+      });
+    });
+  }
+
+  Future<void> completeInventoryAndPurchaseOrder(
+      String uid, PurchaseOrder purchaseOrder) async {
+    DocumentReference purchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('PurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    DocumentReference completePurchaseOrderReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('CompletePurchaseOrders')
+        .doc(purchaseOrder.purchaseOrderID);
+
+    CompletePurchaseOrder completePurchaseOrder =
+        CompletePurchaseOrder.fromPurchaseOrder(
+            purchaseOrder, true, DateTime.now());
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.set(
+          completePurchaseOrderReference, completePurchaseOrder.toFirestore());
+      transaction.delete(purchaseOrderReference);
+    });
+  }
+
+  Future<void> addStockToRetailStock(
+      String uid, String itemID, Stock stock) async {
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID);
+
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(stock.stockID);
+
+    var updatedStock = stock.copyWith(forRetailSale: true);
+
+    var inventoryTransactionID = itemController.getItemID();
+
+    InventoryTransaction inventoryTransaction = InventoryTransaction(
+        inventoryTransactionID: inventoryTransactionID,
+        transactionType: 'Set As Retail Stock',
+        quantityChange: 0.0,
+        transactionMadeOn: DateTime.now(),
+        reason: '',
+        stock: stock.toFirestore());
+
+    DocumentReference inventoryTransactionReference =
+        inventoryReference.collection('History').doc(inventoryTransactionID);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(stockReference, updatedStock.toFirestore());
+      transaction.set(
+          inventoryTransactionReference, inventoryTransaction.toFirestore());
+    });
+  }
+
+  Future<void> removeStockFromRetailStock(
+      String uid, String itemID, Stock stock) async {
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID);
+
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(stock.stockID);
+
+    var updatedStock = stock.copyWith(forRetailSale: false);
+
+    var inventoryTransactionID = itemController.getItemID();
+
+    InventoryTransaction inventoryTransaction = InventoryTransaction(
+        inventoryTransactionID: inventoryTransactionID,
+        transactionType: 'Removed From Retail Stock',
+        quantityChange: 0.0,
+        transactionMadeOn: DateTime.now(),
+        reason: '',
+        stock: stock.toFirestore());
+
+    DocumentReference inventoryTransactionReference =
+        inventoryReference.collection('History').doc(inventoryTransactionID);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.update(stockReference, updatedStock.toFirestore());
+      transaction.set(
+          inventoryTransactionReference, inventoryTransaction.toFirestore());
+    });
+  }
+
+  Future<void> adjustRetailStockFromSalesOrder(
+      String uid, String itemID, Stock adjustedStock, String reason) async {
+    DocumentReference inventoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID);
+
+    DocumentReference stockReference =
+        inventoryReference.collection('Stocks').doc(adjustedStock.stockID);
+
+    var inventoryTransactionID = itemController.getItemID();
+
+    DocumentReference inventoryTransactionReference =
+        inventoryReference.collection('History').doc(inventoryTransactionID);
+
+    await _firestore.runTransaction((transaction) async {
+      var stockDocSnapshot = await transaction.get(stockReference);
+      var currentStock = Stock.fromFirestore(stockDocSnapshot);
+      var currentStockValue =
+          currentStock.stockLevel! * currentStock.costPrice!;
+      var adjustedStockValue =
+          adjustedStock.stockLevel! * currentStock.costPrice!;
+      var adjustedInventoryValue = adjustedStockValue - currentStockValue;
+      var stockLevelIncrement =
+          adjustedStock.stockLevel! - currentStock.stockLevel!;
+      print('Adjusted StockLevel: ${adjustedStock.stockLevel!}');
+      print('Current StockLevel: ${currentStock.stockLevel!}');
+      print('Stock Level Increment: $stockLevelIncrement');
+
+      InventoryTransaction inventoryTransaction = InventoryTransaction(
+          inventoryTransactionID: inventoryTransactionID,
+          transactionType: 'Sales',
+          quantityChange: stockLevelIncrement,
+          transactionMadeOn: DateTime.now(),
+          reason: reason,
+          stock: adjustedStock.toFirestore());
+
+      if (adjustedStock.stockLevel == currentStock.stockLevel) {
+      } else if (adjustedStock.stockLevel == 0) {
+        transaction.delete(stockReference);
+        transaction.update(inventoryReference, {
+          'stockLevel': FieldValue.increment(stockLevelIncrement),
+          'currentInventory': FieldValue.increment(adjustedInventoryValue)
+        });
+        transaction.set(
+            inventoryTransactionReference, inventoryTransaction.toFirestore());
+      } else {
+        transaction
+            .update(stockReference, {'stockLevel': adjustedStock.stockLevel!});
+        transaction.update(inventoryReference, {
+          'stockLevel': FieldValue.increment(stockLevelIncrement),
+          'currentInventory': FieldValue.increment(adjustedInventoryValue)
+        });
+        transaction.set(
+            inventoryTransactionReference, inventoryTransaction.toFirestore());
+      }
+    });
+  }
+
+  Future<void> updateInventoryStatisticsOnSale(
+      String uid, String itemID) async {
+    DocumentReference documentReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID);
+
+    DocumentReference demandHistoryReference = _firestore
+        .collection('Users')
+        .doc(uid)
+        .collection('Inventory')
+        .doc(itemID)
+        .collection('Data')
+        .doc('ItemDemandHistory');
+
+    await _firestore.runTransaction((transaction) async {
+      var inventoryDocSnapshot = await transaction.get(documentReference);
+      var inventory = Inventory.fromFirestore(inventoryDocSnapshot);
+      var itemDemandHistoryDocSnapshot =
+          await transaction.get(demandHistoryReference);
+      var demandHistoryDocument =
+          ItemDemandHistoryDocument.fromFirestore(itemDemandHistoryDocSnapshot);
+      var itemDemandHistory = demandHistoryDocument.itemDemandHistory;
+
+      double calculateAverage(List<Map> data) {
+        if (data.isEmpty) {
+          return 0.0;
+        }
+
+        double sum = 0.0;
+
+        for (final entry in data) {
+          if (entry.containsKey('sales') && entry['sales'] is num) {
+            sum += entry['sales'].toDouble();
+          }
+        }
+
+        return sum / data.length;
+      }
+
+      double calculateMaximum(List<Map> data) {
+        if (data.isEmpty) {
+          return 0.0;
+        }
+
+        double max = double.negativeInfinity;
+
+        for (final entry in data) {
+          if (entry.containsKey('sales') && entry['sales'] is num) {
+            final value = entry['sales'].toDouble();
+            if (value > max) {
+              max = value;
+            }
+          }
+        }
+
+        return max;
+      }
+
+      var maximumDailyDemandFromHistory = calculateMaximum(itemDemandHistory!);
+      var maximumDailyDemand =
+          maximumDailyDemandFromHistory > inventory.maximumDailyDemand!
+              ? maximumDailyDemandFromHistory
+              : inventory.maximumDailyDemand;
+
+      var averageDailyDemand = calculateAverage(itemDemandHistory);
+
+      double? safetyStockLevel = statisticsController.getSafetyStockLevel(
+          maximumLeadTime: inventory.maximumLeadTime!,
+          maximumDailyDemand: maximumDailyDemand!,
+          averageDailyDemand: averageDailyDemand,
+          averageLeadTime: inventory.averageLeadTime!);
+
+      double? reorderPoint = statisticsController.getReorderPoint(
+          averageLeadTime: inventory.averageLeadTime!,
+          averageDailyDemand: averageDailyDemand,
+          safetyStockLevel: safetyStockLevel);
+
+      Map<String, dynamic> data = {
+        'maximumDailyDemand': maximumDailyDemand,
+        'averageDailyDemand': averageDailyDemand,
+        'safetyStockLevel': safetyStockLevel,
+        'reorderPoint': reorderPoint,
+      };
+
+      transaction.update(documentReference, data);
     });
   }
 }

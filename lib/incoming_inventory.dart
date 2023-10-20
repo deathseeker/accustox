@@ -1,8 +1,7 @@
-import 'package:accustox/controllers.dart';
-import 'package:accustox/providers.dart';
+import 'controllers.dart';
+import 'providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'enumerated_values.dart';
 import 'models.dart';
 
 import 'widget_components.dart';
@@ -69,8 +68,9 @@ class IncomingInventoryList extends ConsumerWidget {
                   ),
                 );
         },
-        error: (e, st) =>
-            const ErrorMessage(errorMessage: 'Something went wrong...'),
-        loading: () => const LoadingWidget());
+        error: (e, st) {
+          return const Expanded(child: ErrorMessage(errorMessage: 'Something went wrong...'));
+        },
+        loading: () => const Expanded(child: LoadingWidget()));
   }
 }

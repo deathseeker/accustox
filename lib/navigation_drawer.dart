@@ -1,5 +1,7 @@
 import 'package:accustox/customer_accounts.dart';
 import 'package:accustox/location_management.dart';
+import 'package:accustox/sales_reports.dart';
+import 'package:accustox/sign_out.dart';
 import 'package:accustox/suppliers.dart';
 
 import 'categories.dart';
@@ -21,8 +23,8 @@ class _NavDrawerState extends State<NavDrawer> {
   List<Widget> destinations = [
     const NavigationDrawerDestination(
         icon: Icon(Icons.storefront_outlined), label: Text('Profile')),
-    const NavigationDrawerDestination(
-        icon: Icon(Icons.group_outlined), label: Text('Salespersons')),
+/*    const NavigationDrawerDestination(
+        icon: Icon(Icons.group_outlined), label: Text('Salespersons')),*/
     const NavigationDrawerDestination(
         icon: Icon(Icons.category_outlined), label: Text('Items')),
     const NavigationDrawerDestination(
@@ -34,18 +36,21 @@ class _NavDrawerState extends State<NavDrawer> {
         icon: Icon(Icons.local_shipping_outlined), label: Text('Suppliers')),
     const NavigationDrawerDestination(
         icon: Icon(Icons.account_circle_outlined), label: Text('Customers')),
+    const NavigationDrawerDestination(icon: Icon(Icons.description_outlined), label: Text('Sales Reports')),
     const NavigationDrawerDestination(
         icon: Icon(Icons.logout_outlined), label: Text('Sign Out')),
   ];
 
   List<Widget> views = [
     const Profile(),
-    const Salespersons(),
+    /*const Salespersons(),*/
     const Items(),
     const Categories(),
     const LocationManagement(),
     const Suppliers(),
-    const CustomerAccounts()
+    const CustomerAccounts(),
+    const SalesReports(),
+    const SignOut()
   ];
 
   List<Widget> fabs = [
@@ -59,6 +64,10 @@ class _NavDrawerState extends State<NavDrawer> {
     const LocationManagementFAB(),
     const SuppliersFAB(),
     const CustomerAccountsFAB(),
+    const SizedBox(
+      height: 0.0,
+      width: 0.0,
+    ),
     const SizedBox(
       height: 0.0,
       width: 0.0,
