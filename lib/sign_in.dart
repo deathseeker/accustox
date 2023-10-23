@@ -24,11 +24,16 @@ class SignIn extends StatelessWidget {
             ),
           ),
           googleSignInButton(() async {
-            services.loginSplash();
+            //services.loginSplash();
+            snackBarController.showLoadingSnackBar(message: 'Signing you in...');
             bool userExists = await signInController.handleSignInWithGoogle();
-            userExists
-                ? signInController.navigateToHome()
-                : signInController.navigateToCreateProfile();
+            if (userExists) {
+              navigationController.navigateToHome();
+              snackBarController.hideCurrentSnackBar();
+            } else {
+              signInController.navigateToCreateProfile();
+              snackBarController.hideCurrentSnackBar();
+            }
           }),
 
         ],

@@ -1,3 +1,5 @@
+import 'package:accustox/controllers.dart';
+
 import 'new_sales_order.dart';
 import 'current_inventory.dart';
 import 'incoming_inventory.dart';
@@ -52,37 +54,40 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: scaffoldKey,
-      body: SafeArea(
-          child: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _selectedIndex,
-            groupAlignment: groupAlignment,
-            leading: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 40.0),
-              child: Column(
-                children: [
-                  MenuButton(),
-                  Padding(padding: EdgeInsets.only(top: 8.0)),
-                  FloatingActionButtonPOS()
-                ],
+    return WillPopScope(
+      onWillPop: () => navigationController.handleSystemBackButton(),
+      child: Scaffold(
+        key: scaffoldKey,
+        body: SafeArea(
+            child: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: _selectedIndex,
+              groupAlignment: groupAlignment,
+              leading: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40.0),
+                child: Column(
+                  children: [
+                    MenuButton(),
+                    Padding(padding: EdgeInsets.only(top: 8.0)),
+                    FloatingActionButtonPOS()
+                  ],
+                ),
               ),
+              onDestinationSelected: (int index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+              },
+              destinations: destinations,
+              labelType: labelType,
             ),
-            onDestinationSelected: (int index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-            destinations: destinations,
-            labelType: labelType,
-          ),
-          const Padding(padding: EdgeInsets.only(left: 36.0)),
-          views[_selectedIndex],
-          const Padding(padding: EdgeInsets.only(left: 36.0)),
-        ],
-      )),
+            const Padding(padding: EdgeInsets.only(left: 36.0)),
+            views[_selectedIndex],
+            const Padding(padding: EdgeInsets.only(left: 36.0)),
+          ],
+        )),
+      ),
     );
   }
 }

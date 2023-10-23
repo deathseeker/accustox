@@ -445,9 +445,15 @@ class _EditItemBodyState extends ConsumerState<EditItemBody> {
                           String barcodeData =
                               await scannerController.scanBarCode();
 
-                          setState(() {
-                            eanController.text = barcodeData;
-                          });
+                          if (barcodeData == '-1') {
+                            null;
+                          } else {
+                            setState(() {
+                              eanController.text = barcodeData;
+                            });
+
+                            itemChangeNotifier.update(ean: barcodeData);
+                          }
                         },
                         child: const Icon(Icons.barcode_reader))
                   ],

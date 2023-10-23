@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:accustox/widget_components.dart';
-
 import 'providers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
