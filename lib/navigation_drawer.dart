@@ -1,13 +1,11 @@
-import 'package:accustox/customer_accounts.dart';
-import 'package:accustox/location_management.dart';
-import 'package:accustox/sales_reports.dart';
-import 'package:accustox/sign_out.dart';
-import 'package:accustox/suppliers.dart';
-
+import 'customer_accounts.dart';
+import 'location_management.dart';
+import 'sales_reports.dart';
+import 'sign_out.dart';
+import 'suppliers.dart';
 import 'categories.dart';
 import 'items.dart';
 import 'profile.dart';
-import 'salespersons.dart';
 import 'package:flutter/material.dart';
 
 class NavDrawer extends StatefulWidget {
@@ -23,8 +21,6 @@ class _NavDrawerState extends State<NavDrawer> {
   List<Widget> destinations = [
     const NavigationDrawerDestination(
         icon: Icon(Icons.storefront_outlined), label: Text('Profile')),
-/*    const NavigationDrawerDestination(
-        icon: Icon(Icons.group_outlined), label: Text('Salespersons')),*/
     const NavigationDrawerDestination(
         icon: Icon(Icons.category_outlined), label: Text('Items')),
     const NavigationDrawerDestination(
@@ -43,7 +39,6 @@ class _NavDrawerState extends State<NavDrawer> {
 
   List<Widget> views = [
     const Profile(),
-    /*const Salespersons(),*/
     const Items(),
     const Categories(),
     const LocationManagement(),
@@ -58,7 +53,6 @@ class _NavDrawerState extends State<NavDrawer> {
       height: 0.0,
       width: 0.0,
     ),
-    const SalespersonFAB(),
     const ItemsFAB(),
     const CategoriesFAB(),
     const LocationManagementFAB(),

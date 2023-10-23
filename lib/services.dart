@@ -1,12 +1,10 @@
 import 'dart:async';
-
 import 'package:accustox/customer_account_details.dart';
 import 'package:accustox/incoming_inventory_management.dart';
 import 'package:accustox/new_inventory_stock_from_purchase_order.dart';
 import 'package:accustox/sales_order_details.dart';
 import 'package:accustox/sales_report_details.dart';
 import 'package:audioplayers/audioplayers.dart';
-
 import 'current_inventory_details.dart';
 import 'default_values.dart';
 import 'edit_item.dart';
