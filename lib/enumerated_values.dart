@@ -92,6 +92,7 @@ enum SaleType {
 
 enum PaymentTerm {
   cash('Cash', 'Payment is due on order'),
+  credit('Credit', 'Credit'),
   dueOnReceipt('Due on Receipt',
       'Payment is due immediately upon receipt of the invoice.'),
   cashOnDelivery('Cash on Delivery',

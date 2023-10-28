@@ -52,6 +52,9 @@ class DatabaseService {
         merchantRef.collection('BusinessData').doc('PurchaseOrderNumber');
     final DocumentReference salesOrderNumberRef =
         merchantRef.collection('BusinessData').doc('SalesOrderNumber');
+    final DocumentReference dailySalesReportMasterListRef = merchantRef
+        .collection('BusinessData')
+        .doc('DailySalesReportMasterList');
 
     await _firestore.runTransaction((transaction) async {
       transaction.set(merchantRef, userProfile.toFirestore());
@@ -63,6 +66,7 @@ class DatabaseService {
       transaction.set(customersRef, {'customerList': []});
       transaction.set(purchaseOrderNumberRef, {'purchaseOrderNumber': 0});
       transaction.set(salesOrderNumberRef, {'salesOrderNumber': 0});
+      transaction.set(dailySalesReportMasterListRef, {'salesReports': []});
     });
   }
 
@@ -1893,9 +1897,6 @@ class DatabaseService {
       var adjustedInventoryValue = adjustedStockValue - currentStockValue;
       var stockLevelIncrement =
           adjustedStock.stockLevel! - currentStock.stockLevel!;
-      print('Adjusted StockLevel: ${adjustedStock.stockLevel!}');
-      print('Current StockLevel: ${currentStock.stockLevel!}');
-      print('Stock Level Increment: $stockLevelIncrement');
 
       InventoryTransaction inventoryTransaction = InventoryTransaction(
           inventoryTransactionID: inventoryTransactionID,
